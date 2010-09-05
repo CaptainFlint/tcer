@@ -288,6 +288,17 @@ int APIENTRY wWinMain(
 			delete[] tmp;
 	}
 	delete[] sel_items;
+	if (edit_paths.GetLength() == 0)
+	{
+		// No elements found, probably switched directory too fast in TC.
+		// Get the file from command line.
+		WCHAR* tmp = new WCHAR[BUF_SZ];
+		size_t offset = ((lpCmdLine[0] == L'"') ? 1 : 0);
+		size_t len = wcscpylen_s(tmp, BUF_SZ, lpCmdLine + offset);
+		if (tmp[len - 1] == L'"')
+			tmp[len - 1] = L'\0';
+		edit_paths.Append(tmp);
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// Find TCER configuration file                                         //
@@ -416,32 +427,93 @@ int APIENTRY wWinMain(
 	}
 	BOOL is_mdi = GetPrivateProfileInt(buf, L"MDI", 0, ini_path);
 
-	WCHAR* cmd_line = new WCHAR[CMDLINE_BUF_SZ];
-	size_t cur_pos = 0;
-	cmd_line[cur_pos++] = L'"';
-	cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
-	cmd_line[cur_pos++] = L'"';
-	for (i = 0; i < edit_paths.GetLength(); ++i)
+	ArrayPtr<WCHAR> cmd_lines;
+	if (is_mdi)
 	{
-		cmd_line[cur_pos++] = L' ';
+		// TODO: Optimize
+		WCHAR* cmd_line = new WCHAR[CMDLINE_BUF_SZ];
+		size_t cur_pos = 0;
 		cmd_line[cur_pos++] = L'"';
-		cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, edit_paths[i]);
+		cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
 		cmd_line[cur_pos++] = L'"';
+		size_t cmd_line_args_pos = cur_pos;
+		for (i = 0; i < edit_paths.GetLength(); ++i)
+		{
+			if (cur_pos + 4 > CMDLINE_BUF_SZ)
+			{
+				cmd_line[cur_pos++] = L'\0';
+				cmd_lines.Append(cmd_line);
+				cmd_line = new WCHAR[CMDLINE_BUF_SZ];
+				cur_pos = 0;
+				cmd_line[cur_pos++] = L'"';
+				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
+				cmd_line[cur_pos++] = L'"';
+			}
+			size_t cur_pos_bak = cur_pos;
+			cmd_line[cur_pos++] = L' ';
+			cmd_line[cur_pos++] = L'"';
+			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, edit_paths[i]);
+			if (cur_pos + 2 >= CMDLINE_BUF_SZ)
+			{
+				cur_pos = cur_pos_bak;
+				cmd_line[cur_pos++] = L'\0';
+				cmd_lines.Append(cmd_line);
+				cmd_line = new WCHAR[CMDLINE_BUF_SZ];
+				cur_pos = 0;
+				cmd_line[cur_pos++] = L'"';
+				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
+				cmd_line[cur_pos++] = L'"';
+				cmd_line[cur_pos++] = L' ';
+				cmd_line[cur_pos++] = L'"';
+				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, edit_paths[i]);
+			}
+			cmd_line[cur_pos++] = L'"';
+		}
+		cmd_line[cur_pos++] = L'\0';
+		cmd_lines.Append(cmd_line);
 	}
-	cmd_line[cur_pos++] = L'\0';
+	else
+	{
+		for (i = 0; i < edit_paths.GetLength(); ++i)
+		{
+			WCHAR* cmd_line = new WCHAR[BUF_SZ * 2 + 6];
+			size_t cur_pos = 0;
+			cmd_line[cur_pos++] = L'"';
+			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
+			cmd_line[cur_pos++] = L'"';
+			cmd_line[cur_pos++] = L' ';
+			cmd_line[cur_pos++] = L'"';
+			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, edit_paths[i]);
+			cmd_line[cur_pos++] = L'"';
+			cmd_line[cur_pos++] = L'\0';
+			cmd_lines.Append(cmd_line);
+		}
+	}
+
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
-	ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-	ZeroMemory(&si, sizeof(STARTUPINFO));
-	si.cb = sizeof(STARTUPINFO);
-	if (CreateProcess(NULL, cmd_line, NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi) == 0)
+	for (i = 0; i < cmd_lines.GetLength(); ++i)
 	{
-		swprintf_s(buf, BUF_SZ, L"Failed to start editor (%d)", GetLastError());
-		MessageBox(NULL, buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
-		return 1;
+		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
+		ZeroMemory(&si, sizeof(STARTUPINFO));
+		si.cb = sizeof(STARTUPINFO);
+		if (CreateProcess(NULL, cmd_lines[i], NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi) == 0)
+		{
+			swprintf_s(buf, BUF_SZ, L"Failed to start editor (%d)", GetLastError());
+			MessageBox(NULL, buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			return 1;
+		}
+		CloseHandle(pi.hProcess);
+		CloseHandle(pi.hThread);
 	}
-	CloseHandle(pi.hProcess);
-	CloseHandle(pi.hThread);
 
+	// TODO: Branch view
+	// TODO: Find results
+	// TODO: Brief/full/custom/thumbs view modes
+	// TODO: (?) Detect tree mode
+	// TODO: Archives support (incl. waiting for process termination)
+	// TODO: (?) Detect type from file under cursor, not from first selected (what if file under cursor is not selected?)
+	// TODO: Environment vars in paths
+	// TODO: Change editor's window placement (max, min)
 	return 0;
 }
