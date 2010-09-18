@@ -38,10 +38,10 @@ public:
 	// Find first window that is a direct child of 'parent', has class name 'wnd_class'
 	// and belongs to process 'pid'.
 	// If either of the arguments is NULL or 0 it is ignored.
-	static HWND FindWnd(HWND parent, const WCHAR* wclass, ULONG_PTR pid);
+	static HWND FindWnd(HWND parent, bool direct_child, const WCHAR* wclass, ULONG_PTR pid);
 
 	// Find all windows that are direct children of 'parent', have class name 'wnd_class'
 	// and belong to process 'pid'.
 	// If either of the arguments is NULL or 0 it is ignored.
-	static ArrayHWND* FindWnds(HWND parent, const WCHAR* wclass, ULONG_PTR pid);
+	static ArrayHWND* FindWnds(HWND parent, bool direct_child, const WCHAR* wclass, ULONG_PTR pid);
 };

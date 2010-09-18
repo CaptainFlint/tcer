@@ -48,6 +48,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="2"
 				WarningLevel="3"
 				DebugInformationFormat="4"
@@ -57,6 +58,7 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				Culture="1033"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -120,6 +122,7 @@
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
+				EnableEnhancedInstructionSet="2"
 				UsePrecompiledHeader="2"
 				WarningLevel="3"
 				DebugInformationFormat="3"
@@ -129,6 +132,7 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				Culture="1033"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -197,7 +201,7 @@
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="false"
-				EnableEnhancedInstructionSet="1"
+				EnableEnhancedInstructionSet="2"
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				WarningLevel="4"
@@ -208,6 +212,7 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				Culture="1033"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"
@@ -277,7 +282,7 @@
 				RuntimeLibrary="0"
 				BufferSecurityCheck="false"
 				EnableFunctionLevelLinking="false"
-				EnableEnhancedInstructionSet="1"
+				EnableEnhancedInstructionSet="2"
 				RuntimeTypeInfo="false"
 				UsePrecompiledHeader="2"
 				WarningLevel="4"
@@ -288,6 +293,7 @@
 			/>
 			<Tool
 				Name="VCResourceCompilerTool"
+				Culture="1033"
 			/>
 			<Tool
 				Name="VCPreLinkEventTool"

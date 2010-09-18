@@ -14,6 +14,7 @@ public:
 
 	size_t GetLength() const { return length; }
 	const T& operator [](size_t idx) const { _ASSERT((idx < length) && (data != NULL)); return data[idx]; }
+	T& operator [](size_t idx) { _ASSERT((idx < length) && (data != NULL)); return data[idx]; }
 	bool Append(T elem);
 };
 

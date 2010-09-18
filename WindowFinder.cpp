@@ -49,11 +49,11 @@ BOOL CALLBACK WindowFinder::EnumWindowProc(HWND hwnd, LPARAM lparam)
 // Find window that is a direct child of 'parent', has class name 'wnd_class'
 // and belongs to process 'pid'.
 // If either of the arguments is NULL or 0 it is ignored.
-HWND WindowFinder::FindWnd(HWND parent, const WCHAR* wclass, ULONG_PTR pid)
+HWND WindowFinder::FindWnd(HWND parent, bool direct_child, const WCHAR* wclass, ULONG_PTR pid)
 {
 	SearchData data;
 	data.find_all = false;
-	data.wnd_parent = parent;
+	data.wnd_parent = (direct_child ? parent : NULL);
 	data.wnd_class = wclass;
 	data.wnd_pid = pid;
 	data.res_wnd = NULL;
@@ -64,11 +64,11 @@ HWND WindowFinder::FindWnd(HWND parent, const WCHAR* wclass, ULONG_PTR pid)
 // Find all windows that are direct children of 'parent', have class name 'wnd_class'
 // and belong to process 'pid'.
 // If either of the arguments is NULL or 0 it is ignored.
-ArrayHWND* WindowFinder::FindWnds(HWND parent, const WCHAR* wclass, ULONG_PTR pid)
+ArrayHWND* WindowFinder::FindWnds(HWND parent, bool direct_child, const WCHAR* wclass, ULONG_PTR pid)
 {
 	SearchData data;
 	data.find_all = true;
-	data.wnd_parent = parent;
+	data.wnd_parent = (direct_child ? parent : NULL);
 	data.wnd_class = wclass;
 	data.wnd_pid = pid;
 	data.res_wnds = new ArrayHWND;
