@@ -58,6 +58,7 @@ template <class T>
 class ArrayPtr : public Array<T*>
 {
 public:
+	ArrayPtr(size_t len = 0) : Array<T*>(len) {}
 	~ArrayPtr(void);
 };
 
