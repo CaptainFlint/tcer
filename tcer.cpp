@@ -617,6 +617,7 @@ int APIENTRY wWinMain(
 
 	size_t MaxItems = GetPrivateProfileInt(L"Configuration", L"MaxItems", 256, ini_path);
 	size_t MaxShiftF4Seconds = GetPrivateProfileInt(L"Configuration", L"MaxShiftF4Seconds", 2, ini_path);
+	bool ClearSelection = (GetPrivateProfileInt(L"Configuration", L"ClearSelection", 1, ini_path) != 0);
 
 	sel_items_num = edit_paths.GetLength();
 	if ((MaxItems != 0) && (sel_items_num > MaxItems))
@@ -746,8 +747,15 @@ int APIENTRY wWinMain(
 			MessageBox(NULL, buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
+		if (ClearSelection)
+		{
+			// Send message into TC window to clear selection
+			const int cm_ClearAll = 524;
+			PostMessage(tc_main_wnd, WM_USER + 51, cm_ClearAll, 0);
+		}
 		// WaitForTerminate is set for single file only
 		// TODO: Make sure it works for multiple iterations (for the future)
+		// TODO: If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
 		if (WaitForTerminate)
 			WaitForSingleObject(pi.hProcess, INFINITE);
 		CloseHandle(pi.hProcess);
@@ -763,5 +771,6 @@ int APIENTRY wWinMain(
 	// TODO: (?) Detect type from file under cursor, not from first selected (what if file under cursor is not selected?)
 	// TODO: If several dirs selected and no files -> open focused file or show error?
 	// TODO: Accept lists of extensions in INI
+	// TODO: Support virtual folders.
 	return 0;
 }
