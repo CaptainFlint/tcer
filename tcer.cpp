@@ -165,8 +165,7 @@ int APIENTRY wWinMain(
 #endif
 	if (tc_main_wnd == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Could not find parent TC window!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"Could not find parent TC window!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 
@@ -174,8 +173,7 @@ int APIENTRY wWinMain(
 	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, L"TMyListBox", 0);
 	if (tc_panels->GetLength() == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Could not find panels in the TC window!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"Could not find panels in the TC window!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 
@@ -197,8 +195,7 @@ int APIENTRY wWinMain(
 	}
 	if (gti.hwndFocus == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to determine active panel!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"Failed to determine active panel!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	for (i = 0; i < tc_panels->GetLength(); ++i)
@@ -212,14 +209,12 @@ int APIENTRY wWinMain(
 	delete tc_panels;
 	if (tc_panel == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"No TC panel is focused!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"No TC panel is focused!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	if (GetWindowTextLength(tc_panel) != 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"No TC file panel is focused!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"No TC file panel is focused!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 
@@ -237,8 +232,7 @@ int APIENTRY wWinMain(
 	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, L"TMyPanel", 0);
 	if (tc_panels->GetLength() == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find TC command line!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"Failed to find TC command line!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	for (i = 0; i < tc_panels->GetLength(); ++i)
@@ -337,7 +331,7 @@ int APIENTRY wWinMain(
 	// 5. Fetch the list of items to edit.
 
 	// If file under cursor is selected, it will be used for selecting the editor
-	// TODO: Implement getting editor by the focused element
+	// TODO: [HIGH] Implement getting editor by the focused element instead of the first selected
 	bool focused_is_selected = false;
 
 	// Get the focused item
@@ -416,8 +410,8 @@ int APIENTRY wWinMain(
 	// Translate list of items into list of paths                           //
 	//////////////////////////////////////////////////////////////////////////
 
-	// TODO: Support opening files from %TEMP%\_tc\
-	// TODO: If errors (e.g. no panel has focus), just open lpCmdLine
+	// TODO: [HIGH] Support opening files directly from %TEMP%\_tc\ 
+	// TODO: [HIGH] If errors (e.g. no panel has focus), just open lpCmdLine
 
 	/*
 		Current implementation:
@@ -464,7 +458,7 @@ int APIENTRY wWinMain(
 		}
 	}
 
-	// TODO: Get rid of code duplication
+	// TODO: [MEDIUM] Get rid of code duplication
 	// a. Check for archive/FS-plugin/FTP/etc.
 	WCHAR* temp_dir = new WCHAR[BUF_SZ];
 	if (temp_dir == NULL)
@@ -528,8 +522,8 @@ int APIENTRY wWinMain(
 			file_time64.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 			local_time64.HighPart = local_time.dwHighDateTime;
 			local_time64.LowPart = local_time.dwLowDateTime;
-			// TODO: Make number of seconds configurable (move INI reading code upper)
-			if (local_time64.QuadPart - file_time64.QuadPart < 2 * 10000000)
+			// TODO: [HIGH] Make number of milliseconds (2000) configurable (move INI reading code upper)
+			if (local_time64.QuadPart - file_time64.QuadPart < 2000 * 10000)
 			{
 				edit_paths->Append(input_file);
 				input_file = NULL;
@@ -623,8 +617,7 @@ int APIENTRY wWinMain(
 		// Extension not found, append '.ini'
 		if (ini_name_len + 5 > BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long INI file name!");
-			MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			MessageBox(NULL, L"Too long INI file name!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 		wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
@@ -635,8 +628,7 @@ int APIENTRY wWinMain(
 		idx_dot -= idx_slash;
 		if (idx_dot + 4 > BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long INI file name!");
-			MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			MessageBox(NULL, L"Too long INI file name!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 		wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
@@ -644,8 +636,7 @@ int APIENTRY wWinMain(
 	}
 	if (idx_slash + ini_name_len + 1 > BUF_SZ)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Too long path to INI!");
-		MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+		MessageBox(NULL, L"Too long path to INI!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
@@ -657,8 +648,7 @@ int APIENTRY wWinMain(
 		path_len = GetEnvironmentVariable(L"COMMANDER_INI", ini_path, BUF_SZ);
 		if (path_len == 0)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"COMMANDER_INI variable undefined!");
-			MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			MessageBox(NULL, L"COMMANDER_INI variable undefined!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 		idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
@@ -672,16 +662,14 @@ int APIENTRY wWinMain(
 			// Keep path, replace file name
 			if (idx_slash + ini_name_len + 1 > BUF_SZ)
 			{
-				swprintf_s(msg_buf, BUF_SZ, L"Too long path to myself!");
-				MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+				MessageBox(NULL, L"Too long path to myself!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 				return 1;
 			}
 			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 		}
 		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Configuration file not found!");
-			MessageBox(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			MessageBox(NULL, L"Configuration file not found!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
 	}
@@ -773,7 +761,7 @@ int APIENTRY wWinMain(
 	}
 	if (is_mdi)
 	{
-		// TODO: Optimize
+		// TODO: [MEDIUM] Optimize, get rid of code duplication
 		WCHAR* cmd_line = new WCHAR[CMDLINE_BUF_SZ];
 		if (cmd_line == NULL)
 		{
@@ -874,8 +862,8 @@ int APIENTRY wWinMain(
 			PostMessage(tc_main_wnd, WM_USER + 51, cm_ClearAll, 0);
 		}
 		// WaitForTerminate is set for single file only
-		// TODO: Make sure it works for multiple iterations (for the future)
-		// TODO: If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
+		// TODO: [LOW] Make sure it works for multiple iterations (for the future)
+		// TODO: [LOW] If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
 		if (WaitForTerminate)
 			WaitForSingleObject(pi.hProcess, INFINITE);
 		CloseHandle(pi.hProcess);
@@ -885,14 +873,13 @@ int APIENTRY wWinMain(
 	delete cmd_lines;
 	delete[] msg_buf;
 
-	// TODO: Option to change editor's window placement (max, min)
-	// TODO: (?) Detect tree mode
-	// TODO: (?) Detect type from file under cursor, not from first selected (what if file under cursor is not selected?)
-	// TODO: If several dirs selected and no files -> open focused file or show error?
-	// TODO: Accept lists of extensions in INI
-	// TODO: Support virtual folders
-	// TODO: (?) Allow associations not only by extension, but also by file masks
-	// TODO: Add support for special command-line arguments for editors
+	// TODO: [MEDIUM] Option to change editor's window placement (max, min)
+	// TODO: [IDLE] Detect tree mode
+	// TODO: [HIGH] Decide: If several dirs selected and no files -> open focused file or show error?
+	// TODO: [IDLE] Accept lists of extensions in INI, not only single items
+	// TODO: [LOW] Support virtual folders
+	// TODO: [LOW] Allow associations not only by extension, but also by file masks
+	// TODO: [HIGH] Add support for special command-line arguments for editors
 
 	return 0;
 }
