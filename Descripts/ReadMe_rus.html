@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="ru" lang="ru" dir="ltr">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Total Commander Edit Redirector ReadMe</title>
+  
+  <style type="text/css">
+    body {
+      background-color: #eeffff;
+      font-family: serif;
+      font-size: 12pt;
+    }
+    h1 {
+      font-size: 18pt;
+      font-weight: bold;
+    }
+    h2 {
+      font-size: 16pt;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+    h3 {
+      font-size: 12pt;
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+    p {
+      text-align: justify;
+    }
+    td {
+      vertical-align: top;
+    }
+    td.ini-key {
+      padding-top: 2pt;
+      font-family: monospace;
+      font-size: 10pt;
+      color: #000080;
+    }
+    code {
+      font-family: monospace;
+      font-size: 10pt;
+      color: #000080;
+    }
+    .nobr {
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Total Commander Edit Redirector</h1>
+<p>
+<b>Версия 1.0.0.0</b>
+</p>
+<p>
+Утилита для Total Commander, позволяющая открывать файлы на редактирование в разных редакторах, в зависимости от расширений.
+</p>
+
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr><td><b>Автор:</b></td><td style="width: 0.3em;"></td><td>Власов Константин, 2010 г.</td></tr>
+  <tr><td><b>Домашняя страница:</b></td><td style="width: 0.3em;"></td><td><a href="http://flint-inc.ru/rus/info/tcer.html" target="_blank">http://flint-inc.ru/</a></td></tr>
+  <tr><td><b>E-mail:</b></td><td style="width: 0.3em;"></td><td><a href="mailto:support@flint_inc.ru?Subject=TCER">support@flint_inc.ru</a></td></tr>
+</table>
+
+<p>
+Распространяется по лицензии <a href="Artistic%20License%202.0.html">Artistic License 2.0</a>.
+</p>
+
+<p>
+Системные требования:<br />
+Windows 2000 и выше<br />
+Total Commander 7.50&ndash;7.55a
+</p>
+
+
+<a name="description"></a><h2>Описание</h2>
+<p>
+Использование редактора файлов в Total Commander реализовано с ограничениями, а именно:
+</p>
+<ul type="disc">
+  <li>невозможно назначить разным типам файлов разные редакторы;</li>
+  <li>невозможно отправить в редактор сразу несколько файлов.</li>
+</ul>
+<p>
+Есть различные пути решения этих проблем, но все они обладают теми или иными недостатками. TCER<span class="nobr"> &mdash;</span> попытка найти очередное компромиссное решение.
+</p>
+<p>
+Программа вызывается по нажатию <code>F4</code> и автоматически перенаправляет открытие файлов в соответствующий редактор. Если выделено несколько файлов, они все будут открыты, в противном случае открывается файл под курсором. См. также раздел <a href="#restrictions">Ограничения программы</a>.
+</p>
+
+
+<a name="installation"></a><h2>Установка</h2>
+<p>
+Для установки программы скопируйте её в любой каталог. Файл конфигурации <code>tcer.ini</code> (описание см. <a href="#configuration">ниже</a>) должен располагаться либо рядом с исполняемым файлом программы, либо (если этот каталог недоступен для записи) в каталог, где находится основной файл конфигурации TC (<code>wincmd.ini</code>).
+</p>
+<p>
+После этого откройте диалог настройки TC на странице "Правка/Просмотр" и укажите полный путь к файлу <code>tcer.exe</code> в поле "Программа-редактор". Настройка самой программы осуществляется ручной правкой INI-файла.
+</p>
+
+
+<a name="configuration"></a><h2>Файл конфигурации</h2>
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr>
+    <td class="ini-key"><b>[Configuration]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Секция общих настроек программы.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">MaxItems=256</td>
+    <td style="width: 1em;"></td>
+    <td>При превышении указанного здесь количества выделенных файлов будет выведен дополнительный запрос-подтверждение. Значение 0 отключает запрос.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">ClearSelection=1</td>
+    <td style="width: 1em;"></td>
+    <td>Если значение 1, выделение в файловой панели TC будет автоматически снято после запуска редактора.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[Extensions]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Секция привязки расширений к программам.</td>
+  </tr>
+  <tr>
+    <td class="ini-key"><i>ext</i>=<i>Editor1</i></td>
+    <td style="width: 1em;"></td>
+    <td><code><i>ext</i></code><span class="nobr"> &mdash;</span> расширение файла (<code>&lt;nil&gt;</code><span class="nobr"> &mdash;</span> отсутствующее); программа-редактор определяется в секции <code><b>[Program_<i>Editor1</i>]</b></code>.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[DefaultProgram]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Параметры редактора, вызывающегося по умолчанию (см. описание секции <code><b>[Program_<i>Editor1</i>]</b></code>).</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[Program_<i>Editor1</i>]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Параметры программы <code><i>Editor1</i></code>.</td>
+  </tr>
+  <tr>
+    <td colspan="3" class="ini-key">FullPath=%ProgramFiles%\MyEditor\MyEditor.exe</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td style="width: 1em;"></td>
+    <td>Полный путь к исполняемому файлу редактора. Можно использовать переменные окружения.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">MDI=1</td>
+    <td style="width: 1em;"></td>
+    <td>1, если редактор многодокументный; 0, если однодокументный.</td>
+  </tr>
+</table>
+
+
+<a name="restrictions"></a><h2>Ограничения программы</h2>
+<ol type="1">
+  <li>В режиме эскизов открывается только файл под курсором (ограничение TC).</li>
+  <li>Каталоги <code>%TEMP%\_tc</code> и <code>%TEMP%\_tc_</code> считаются служебными, в них открывается только файл под курсором (временное решение, возможна доработка в будущем).</li>
+  <li>Не поддерживаются виртуальные папки (возможна доработка в будущем).</li>
+  <li>В архивах, FS-плагинах, при FTP/LPT/USB-подключениях будет открыт только файл под курсором (ограничение TC).</li>
+  <li>Если выбранные файлы привязаны к разным редакторам, они все откроются в одном редакторе<span class="nobr"> &mdash;</span> первом (возможна доработка в будущем).</li>
+  <li>В подробном режиме представления в зависимости от текущей локали открытие выделенных файлов может не работать. Если это произошло, пожалуйста, сообщите мне, с какой локалью это происходит.</li>
+</ol>
+
+
+<a name="faq"></a><h2>ЧаВо (ЧАсто задаваемые ВОпросы)</h2>
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr>
+    <td><b>В:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Зачем ещё один мультиредактор? Есть же ChoiceEditor, OFSTC, F4Menu.</td>
+  </tr>
+  <tr>
+    <td><b>О:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Мне захотелось написать такую программу для себя, чтобы я мог не зависеть от авторов этих программ, чтобы мог сам исправлять ошибки и дорабатывать утилиту под свои нужды. По функциональности TCER никогда не превзойдёт упомянутые альтернативы, такой цели не ставилось. Основной упор делается на минимальный необходимый функционал, максимальную компактность и скорость работы. Если кому-то программа будет полезной<span class="nobr"> &mdash;</span> хорошо, нет<span class="nobr"> &mdash;</span> можно выбрать любую другую. В конце концов, много<span class="nobr"> &mdash;</span> не мало.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td><b>В:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Не хочу копаться в INI-файле! Почему нет удобного конфигуратора?</td>
+  </tr>
+  <tr>
+    <td><b>О:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>В целях минималистичности. Не исключено, что конфигуратор будет написан и включён в пакет в виде отдельной утилиты, но эта задача для меня низкоприоритетна. Даже если конфигуратор будет разработан, интеграции его с TCER не планируется (опять же, по соображениям минималистичности).</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td><b>В:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>А как назначить несколько программ на одно расширение с возможностью выбора?</td>
+  </tr>
+  <tr>
+    <td><b>О:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Никак. Эта функция не поддерживается и не планируется.</td>
+  </tr>
+</table>
+
+
+<a name="history"></a><h2>История версий</h2>
+
+<h3>Версия 1.0.0.0 (20.09.2010):</h3>
+<ol type="1">
+  <li>Первая публичная версия.</li>
+</ol>
+
+</body>
+</html>

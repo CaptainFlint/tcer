@@ -1,0 +1,215 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en" dir="ltr">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <title>Total Commander Edit Redirector ReadMe</title>
+  
+  <style type="text/css">
+    body {
+      background-color: #eeffff;
+      font-family: serif;
+      font-size: 12pt;
+    }
+    h1 {
+      font-size: 18pt;
+      font-weight: bold;
+    }
+    h2 {
+      font-size: 16pt;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+    h3 {
+      font-size: 12pt;
+      font-weight: bold;
+      margin-bottom: 0.5em;
+    }
+    p {
+      text-align: justify;
+    }
+    td {
+      vertical-align: top;
+    }
+    td.ini-key {
+      padding-top: 2pt;
+      font-family: monospace;
+      font-size: 10pt;
+      color: #000080;
+    }
+    code {
+      font-family: monospace;
+      font-size: 10pt;
+      color: #000080;
+    }
+    .nobr {
+      white-space: nowrap;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>Total Commander Edit Redirector</h1>
+<p>
+<b>Version 1.0.0.0</b>
+</p>
+<p>
+Addon for Total Commander that allows to edit files in different editors depending on the extensions.
+</p>
+
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr><td><b>Author:</b></td><td style="width: 0.3em;"></td><td>Konstantin Vlasov, 2010</td></tr>
+  <tr><td><b>Homepage:</b></td><td style="width: 0.3em;"></td><td><a href="http://flint-inc.ru/eng/info/tcer.html" target="_blank">http://flint-inc.ru/</a></td></tr>
+  <tr><td><b>E-mail:</b></td><td style="width: 0.3em;"></td><td><a href="mailto:support@flint_inc.ru?Subject=TCER">support@flint_inc.ru</a></td></tr>
+</table>
+
+<p>
+Distributed under <a href="Artistic%20License%202.0.html">Artistic License 2.0</a>.
+</p>
+
+<p>
+System requirements:<br />
+Windows 2000 and higher<br />
+Total Commander 7.50&ndash;7.55a
+</p>
+
+
+<a name="description"></a><h2>Description</h2>
+<p>
+Using editor in Total Commander has some limitations, particularly:
+</p>
+<ul type="disc">
+  <li>it is impossible to use different editors for different file types;</li>
+  <li>it is impossible to open for editing several files at once.</li>
+</ul>
+<p>
+There are different ways of solving these problems, but none of them is flawless. TCER is another attempt of finding a compromise.
+</p>
+<p>
+The program is opened by pressing <code>F4</code> and automatically redirects file opening into an appropriate editor. If several files are selected they will all be opened, otherwise the focused file (the one under cursor) will be opened. See also the <a href="#restrictions">Restrictions of the program</a> section.
+</p>
+
+
+<a name="installation"></a><h2>Installation</h2>
+<p>
+To install the program copy it into any directory. The configuration file <code>tcer.ini</code> (see <a href="#configuration">below</a> for the description) should be located either in the same directory, or (if this directory is write-prtected) in the directory where the main configuration file of TC (<code>wincmd.ini</code>) lies.
+</p>
+<p>
+After that open the Configuration dialog in TC, select the page "Edit/View" and specify the full path to the <code>tcer.exe</code> file in the "Editor" field. Configuring the program itself is performed via manual editing of the INI file.
+</p>
+
+
+<a name="configuration"></a><h2>Сonfiguration file</h2>
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr>
+    <td class="ini-key"><b>[Configuration]</b></td>
+    <td style="width: 1em;"></td>
+    <td>General program settings section.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">MaxItems=256</td>
+    <td style="width: 1em;"></td>
+    <td>When the number of selected files exceeds the number specified here, additional confirmation request will be displayed. The value 0 turns it off.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">ClearSelection=1</td>
+    <td style="width: 1em;"></td>
+    <td>If set to 1, the selection in the TC panel will be automatically cleared after launching the editor.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[Extensions]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Section for binding file extensions to the editors.</td>
+  </tr>
+  <tr>
+    <td class="ini-key"><i>ext</i>=<i>Editor1</i></td>
+    <td style="width: 1em;"></td>
+    <td><code><i>ext</i></code> is a fie extension (<code>&lt;nil&gt;</code> for empty extension); the editor is specified in the <code><b>[Program_<i>Editor1</i>]</b></code> section.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[DefaultProgram]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Parameters for the default editor (see description in the <code><b>[Program_<i>Editor1</i>]</b></code> section).</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td class="ini-key"><b>[Program_<i>Editor1</i>]</b></td>
+    <td style="width: 1em;"></td>
+    <td>Parameters for the editor <code><i>Editor1</i></code>.</td>
+  </tr>
+  <tr>
+    <td colspan="3" class="ini-key">FullPath=%ProgramFiles%\MyEditor\MyEditor.exe</td>
+  </tr>
+  <tr>
+    <td></td>
+    <td style="width: 1em;"></td>
+    <td>Full path to the editor executable file. Environment variables are supported.</td>
+  </tr>
+  <tr>
+    <td class="ini-key">MDI=1</td>
+    <td style="width: 1em;"></td>
+    <td>1 for multi-document editors; 0 for single-document editors.</td>
+  </tr>
+</table>
+
+
+<a name="restrictions"></a><h2>Restrictions of the Program</h2>
+<ol type="1">
+  <li>In the thumbnails more only the focused file is opened (TC restriction).</li>
+  <li>Paths <code>%TEMP%\_tc</code> and <code>%TEMP%\_tc_</code> are special, only the focused file is opened from them (temporary solution, may be improved in the future).</li>
+  <li>Virtual folders are not supported (may be improved in the future).</li>
+  <li>In archives, FS plugins, FTP/LPT/USB connections only the focused file is opened (TC restriction).</li>
+  <li>If selected files are assigned to different editors, they will all be opened by the same editor, the first one (may be improved in the future).</li>
+  <li>In the Full view mode depending on the current locale it might be possible that selected files will not open. If this happens, please tell me the name of such locale.</li>
+</ol>
+
+
+<a name="faq"></a><h2>FAQ (Frequently Asked Questions)</h2>
+<table border="0" cellpadding="0" cellspacing="2">
+  <tr>
+    <td><b>Q:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Why another multi-editor? There are already ChoiceEditor, OFSTC, F4Menu.</td>
+  </tr>
+  <tr>
+    <td><b>A:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>I just wanted to have such a program for myself, so that I did not depend on the authors of these programs and could myself fix bugs and implement improvements for my own needs. The functionality of TCER will never reach one of the mentioned programs, this is not my goal. The emphasis is on the minimal essential functionality, maximum compactness and performance. If anybody finds this program useful I'll be glad, otherwise there are other solutions to choose from. More is always better than less.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td><b>Q:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>I don't want to edit INI file manually. Why there is no visual configurator?</td>
+  </tr>
+  <tr>
+    <td><b>A:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>Because of the same minimalistic approach. It is possible that such a configurator will be written and included into the package, but this task has low priority for me. Besides, even in this case it will be a separate utility not integrated into the main executable.</td>
+  </tr>
+  <tr><td colspan="3" style="height: 1ex;"></td></tr>
+  <tr>
+    <td><b>Q:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>How can I assign several editors for single extension and select one of them on demand?</td>
+  </tr>
+  <tr>
+    <td><b>A:</b></td>
+    <td style="width: 0.3em;"></td>
+    <td>This function is not implemented and not planned.</td>
+  </tr>
+</table>
+
+
+<a name="history"></a><h2>Version history</h2>
+
+<h3>Version 1.0.0.0 (20.09.2010):</h3>
+<ol type="1">
+  <li>First public release.</li>
+</ol>
+
+</body>
+</html>

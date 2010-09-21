@@ -27,7 +27,7 @@ BOOL CALLBACK WindowFinder::EnumWindowProc(HWND hwnd, LPARAM lparam)
 	if (data->wnd_class != NULL)
 	{
 		WCHAR class_name[CLASS_BUF_SZ];
-		if (RealGetWindowClass(hwnd, class_name, CLASS_BUF_SZ) == 0)
+		if (GetClassName(hwnd, class_name, CLASS_BUF_SZ) == 0)
 			return TRUE;
 		if (wcsncmp(class_name, data->wnd_class, CLASS_BUF_SZ) != 0)
 			return TRUE;
