@@ -57,16 +57,47 @@ template <class T> bool Array<T>::Append(T elem)
 template <class T>
 class ArrayPtr : public Array<T*>
 {
+protected:
+	bool* item_auto_destroy;
+
 public:
-	ArrayPtr(size_t len = 0) : Array<T*>(len) {}
+	ArrayPtr(size_t len = 0);
 	~ArrayPtr(void);
+
+	bool Append(T* elem, bool auto_destroy = true);
 };
+
+template <class T> ArrayPtr<T>::ArrayPtr(size_t len)
+{
+	alloc_sz = len;
+	length = 0;
+	if (len != 0)
+	{
+		data = new T*[len];
+		item_auto_destroy = new bool[len];
+	}
+	else
+	{
+		data = NULL;
+		item_auto_destroy = NULL;
+	}
+}
 
 template <class T> ArrayPtr<T>::~ArrayPtr(void)
 {
 	if (data != NULL)
 	{
 		for (size_t i = 0; i < length; ++i)
-			delete[] data[i];
+			if (item_auto_destroy[i])
+				delete[] data[i];
+		delete[] data;
 	}
+}
+
+template <class T> bool ArrayPtr<T>::Append(T* elem, bool auto_destroy)
+{
+	if (!Array<T*>::Append(elem))
+		return false;
+	item_auto_destroy[length - 1] = auto_destroy;
+	return true;
 }
