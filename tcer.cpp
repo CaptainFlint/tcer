@@ -330,9 +330,9 @@ int APIENTRY wWinMain(
 	//////////////////////////////////////////////////////////////////////////
 	// 5. Fetch the list of items to edit.
 
-	// If file under cursor is selected, it will be used for selecting the editor
-	// TODO: [1:HIGH] Implement getting editor by the focused element instead of the first selected
-	bool focused_is_selected = false;
+	// Active item: the one to be used for choosing the editor.
+	// If focused item is selected it will be used, the first file otherwise.
+	size_t active_item = 0;
 
 	// Get the focused item
 	UINT focus_item_idx = (UINT)SendMessage(tc_panel, LB_GETCARETINDEX, 0, 0);
@@ -399,7 +399,7 @@ int APIENTRY wWinMain(
 		{
 			sel_items_txt->Append(tmp);
 			if (focus_item_idx == sel_items_idx[i])
-				focused_is_selected = true;
+				active_item = sel_items_txt->GetLength() - 1;   // Remember the active item index
 		}
 	}
 	if (sel_items_idx != NULL)
@@ -543,12 +543,22 @@ int APIENTRY wWinMain(
 				MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 				return 1;
 			}
-			wcscpy_s(tmp, BUF_SZ, tc_curpath_cmdline);
+			wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
 			len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, (*sel_items_txt)[i]);
 			if ((len < BUF_SZ) && ((GetFileAttributes(tmp) & FILE_ATTRIBUTE_DIRECTORY) == 0))
+			{
 				edit_paths->Append(tmp);
+				// Update the active item index in case some bad items did not pass the test
+				if (active_item == i)
+					active_item = edit_paths->GetLength() - 1;
+			}
 			else
+			{
 				delete[] tmp;
+				// The active item is bad; drop it and use the first item
+				if (active_item == i)
+					active_item = 0;
+			}
 		}
 	}
 
@@ -556,6 +566,7 @@ int APIENTRY wWinMain(
 	if ((edit_paths->GetLength() == 0) && (focus_item_txt != NULL))
 	{
 		// No elements found, probably switched directory too fast in TC.
+		active_item = 0;
 		strip_file_data(focus_item_txt);
 		WCHAR* tmp = new WCHAR[BUF_SZ];
 		if (tmp == NULL)
@@ -563,7 +574,7 @@ int APIENTRY wWinMain(
 			MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
-		wcscpy_s(tmp, BUF_SZ, tc_curpath_cmdline);
+		wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
 		len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, focus_item_txt);
 		if ((len < BUF_SZ) && ((GetFileAttributes(tmp) & FILE_ATTRIBUTE_DIRECTORY) == 0))
 			edit_paths->Append(tmp);
@@ -575,9 +586,14 @@ int APIENTRY wWinMain(
 	if (edit_paths->GetLength() == 0)
 	{
 		// No elements found, probably switched directory too fast in TC.
+		active_item = 0;
 		edit_paths->Append(input_file);
 		input_file = NULL;
 	}
+
+	// Check the final active item index
+	if (active_item >= edit_paths->GetLength())
+		active_item = 0;
 
 	delete sel_items_txt;
 	delete[] tc_curpath_cmdline;
@@ -695,7 +711,7 @@ int APIENTRY wWinMain(
 	// Read TCER options for the first extension                            //
 	//////////////////////////////////////////////////////////////////////////
 
-	WCHAR* edit_path = (*edit_paths)[0];
+	WCHAR* edit_path = (*edit_paths)[active_item];
 	WCHAR* file_ext = new WCHAR[BUF_SZ];
 	WCHAR* ini_section = new WCHAR[BUF_SZ];
 	WCHAR* editor_path = new WCHAR[2 * BUF_SZ];
