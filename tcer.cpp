@@ -331,7 +331,7 @@ int APIENTRY wWinMain(
 	// 5. Fetch the list of items to edit.
 
 	// If file under cursor is selected, it will be used for selecting the editor
-	// TODO: [HIGH] Implement getting editor by the focused element instead of the first selected
+	// TODO: [1:HIGH] Implement getting editor by the focused element instead of the first selected
 	bool focused_is_selected = false;
 
 	// Get the focused item
@@ -410,8 +410,8 @@ int APIENTRY wWinMain(
 	// Translate list of items into list of paths                           //
 	//////////////////////////////////////////////////////////////////////////
 
-	// TODO: [HIGH] Support opening files directly from %TEMP%\_tc\ 
-	// TODO: [HIGH] If errors (e.g. no panel has focus), just open lpCmdLine
+	// TODO: [1:HIGH] Support opening files directly from %TEMP%\_tc\ 
+	// TODO: [1:HIGH] If errors (e.g. no panel has focus), just open lpCmdLine
 
 	/*
 		Current implementation:
@@ -458,7 +458,7 @@ int APIENTRY wWinMain(
 		}
 	}
 
-	// TODO: [MEDIUM] Get rid of code duplication
+	// TODO: [3:MEDIUM] Get rid of code duplication
 	// a. Check for archive/FS-plugin/FTP/etc.
 	WCHAR* temp_dir = new WCHAR[BUF_SZ];
 	if (temp_dir == NULL)
@@ -522,7 +522,7 @@ int APIENTRY wWinMain(
 			file_time64.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 			local_time64.HighPart = local_time.dwHighDateTime;
 			local_time64.LowPart = local_time.dwLowDateTime;
-			// TODO: [HIGH] Make number of milliseconds (2000) configurable (move INI reading code upper)
+			// TODO: [1:HIGH] Make number of milliseconds (2000) configurable (move INI reading code upper)
 			if (local_time64.QuadPart - file_time64.QuadPart < 2000 * 10000)
 			{
 				edit_paths->Append(input_file);
@@ -697,8 +697,9 @@ int APIENTRY wWinMain(
 
 	WCHAR* edit_path = (*edit_paths)[0];
 	WCHAR* file_ext = new WCHAR[BUF_SZ];
-	WCHAR* editor_path = new WCHAR[BUF_SZ];
-	if ((file_ext == NULL) || (editor_path == NULL))
+	WCHAR* ini_section = new WCHAR[BUF_SZ];
+	WCHAR* editor_path = new WCHAR[2 * BUF_SZ];
+	if ((file_ext == NULL) || (ini_section == NULL) || (editor_path == NULL))
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
@@ -718,38 +719,55 @@ int APIENTRY wWinMain(
 	}
 
 	// Get section name that describes the editor to use
-	wcscpylen_s(editor_path, BUF_SZ, L"Program_");
-	if (GetPrivateProfileString(L"Extensions", file_ext, NULL, editor_path + 8, BUF_SZ - 8, ini_path) == 0)
+	wcscpylen_s(ini_section, BUF_SZ, L"Program_");
+	if (GetPrivateProfileString(L"Extensions", file_ext, NULL, ini_section + 8, BUF_SZ - 8, ini_path) == 0)
 	{
 		// No editor specified, use DefaultProgram
-		wcscpylen_s(editor_path, BUF_SZ, L"DefaultProgram");
+		wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
 	}
 	delete[] file_ext;
 
 	// Read the efitor settings
-	BOOL is_mdi = GetPrivateProfileInt(editor_path, L"MDI", 0, ini_path);
+	BOOL is_mdi = GetPrivateProfileInt(ini_section, L"MDI", 0, ini_path);
 	WCHAR* tmp_buf = new WCHAR[BUF_SZ];
 	if (tmp_buf == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
-	if (GetPrivateProfileString(editor_path, L"FullPath", NULL, tmp_buf, BUF_SZ, ini_path) == 0)
+	tmp_buf[0] = L'"';
+	path_len = GetPrivateProfileString(ini_section, L"FullPath", NULL, tmp_buf + 1, BUF_SZ - 1, ini_path);
+	if (path_len == 0)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"INI key [%s]::FullPath is missing!", tmp_buf);
 		MessageBox(tc_main_wnd, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
-	path_len = ExpandEnvironmentStrings(tmp_buf, editor_path, BUF_SZ);
-	if ((path_len == 0) && (path_len > BUF_SZ))
+	path_len = ExpandEnvironmentStrings(tmp_buf, editor_path, 2 * BUF_SZ);
+	if ((path_len == 0) && (path_len > 2 * BUF_SZ - 1))
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'%s'", tmp_buf);
 		MessageBox(tc_main_wnd, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
+	editor_path[path_len - 1] = L'"';
+	editor_path[path_len] = L'\0';
+
+	len = GetPrivateProfileString(ini_section, L"CommandLineArgs", NULL, editor_path + path_len + 1, BUF_SZ - path_len - 1, ini_path);
+	if (len != 0)
+	{
+		editor_path[path_len] = L' ';
+		path_len += len + 1;
+		if (path_len >= 2 * BUF_SZ)
+		{
+			MessageBox(tc_main_wnd, L"Too long editor path and/or args!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			return 1;
+		}
+	}
 
 	delete[] ini_path;
 	delete[] tmp_buf;
+	delete[] ini_section;
 
 	// Construct command lines taking into account the MDI setting and the maximum
 	// allowed command line length CMDLINE_BUF_SZ (32k).
@@ -759,19 +777,17 @@ int APIENTRY wWinMain(
 		MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 		return 1;
 	}
+	size_t cur_pos;
 	if (is_mdi)
 	{
-		// TODO: [MEDIUM] Optimize, get rid of code duplication
+		// TODO: [3:MEDIUM] Optimize, get rid of code duplication
 		WCHAR* cmd_line = new WCHAR[CMDLINE_BUF_SZ];
 		if (cmd_line == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 			return 1;
 		}
-		size_t cur_pos = 0;
-		cmd_line[cur_pos++] = L'"';
-		cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
-		cmd_line[cur_pos++] = L'"';
+		cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 		for (i = 0; i < edit_paths->GetLength(); ++i)
 		{
 			if (cur_pos + 4 > CMDLINE_BUF_SZ)
@@ -784,10 +800,7 @@ int APIENTRY wWinMain(
 					MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 					return 1;
 				}
-				cur_pos = 0;
-				cmd_line[cur_pos++] = L'"';
-				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
-				cmd_line[cur_pos++] = L'"';
+				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 			}
 			size_t cur_pos_bak = cur_pos;
 			cmd_line[cur_pos++] = L' ';
@@ -804,10 +817,7 @@ int APIENTRY wWinMain(
 					MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 					return 1;
 				}
-				cur_pos = 0;
-				cmd_line[cur_pos++] = L'"';
-				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
-				cmd_line[cur_pos++] = L'"';
+				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 				cmd_line[cur_pos++] = L' ';
 				cmd_line[cur_pos++] = L'"';
 				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
@@ -819,21 +829,19 @@ int APIENTRY wWinMain(
 	}
 	else
 	{
+		const size_t sdi_buf_sz = BUF_SZ * 3 + 6;
 		for (i = 0; i < edit_paths->GetLength(); ++i)
 		{
-			WCHAR* cmd_line = new WCHAR[BUF_SZ * 2 + 6];
+			WCHAR* cmd_line = new WCHAR[sdi_buf_sz];
 			if (cmd_line == NULL)
 			{
 				MessageBox(tc_main_wnd, L"Memory allocation error!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
 				return 1;
 			}
-			size_t cur_pos = 0;
-			cmd_line[cur_pos++] = L'"';
-			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, editor_path);
-			cmd_line[cur_pos++] = L'"';
+			cur_pos = wcscpylen_s(cmd_line, sdi_buf_sz, editor_path);
 			cmd_line[cur_pos++] = L' ';
 			cmd_line[cur_pos++] = L'"';
-			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
+			cur_pos += wcscpylen_s(cmd_line + cur_pos, sdi_buf_sz - cur_pos, (*edit_paths)[i]);
 			cmd_line[cur_pos++] = L'"';
 			cmd_line[cur_pos++] = L'\0';
 			cmd_lines->Append(cmd_line);
@@ -862,8 +870,8 @@ int APIENTRY wWinMain(
 			PostMessage(tc_main_wnd, WM_USER + 51, cm_ClearAll, 0);
 		}
 		// WaitForTerminate is set for single file only
-		// TODO: [LOW] Make sure it works for multiple iterations (for the future)
-		// TODO: [LOW] If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
+		// TODO: [5:LOW] Make sure it works for multiple iterations (for the future)
+		// TODO: [5:LOW] If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
 		if (WaitForTerminate)
 			WaitForSingleObject(pi.hProcess, INFINITE);
 		CloseHandle(pi.hProcess);
@@ -873,13 +881,13 @@ int APIENTRY wWinMain(
 	delete cmd_lines;
 	delete[] msg_buf;
 
-	// TODO: [MEDIUM] Option to change editor's window placement (max, min)
-	// TODO: [IDLE] Detect tree mode
-	// TODO: [HIGH] Decide: If several dirs selected and no files -> open focused file or show error?
-	// TODO: [IDLE] Accept lists of extensions in INI, not only single items
-	// TODO: [LOW] Support virtual folders
-	// TODO: [LOW] Allow associations not only by extension, but also by file masks
-	// TODO: [HIGH] Add support for special command-line arguments for editors
+	// TODO: [3:MEDIUM] Option to change editor's window placement (max, min)
+	// TODO: [9:IDLE] Detect tree mode
+	// TODO: [1:HIGH] Decide: If several dirs selected and no files -> open focused file or show error?
+	// TODO: [9:IDLE] Accept lists of extensions in INI, not only single items
+	// TODO: [5:LOW] Support virtual folders
+	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
+	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
 
 	return 0;
 }
