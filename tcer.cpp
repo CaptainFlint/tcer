@@ -778,7 +778,7 @@ int APIENTRY wWinMain(
 	editor_path[path_len - 1] = L'"';
 	editor_path[path_len] = L'\0';
 
-	len = GetPrivateProfileString(ini_section, L"CommandLineArgs", NULL, editor_path + path_len + 1, BUF_SZ - path_len - 1, ini_path);
+	len = GetPrivateProfileString(ini_section, L"CommandLineArgs", NULL, editor_path + path_len + 1, static_cast<DWORD>(BUF_SZ - path_len - 1), ini_path);
 	if (len != 0)
 	{
 		editor_path[path_len] = L' ';
