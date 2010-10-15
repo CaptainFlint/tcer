@@ -409,6 +409,105 @@ int APIENTRY wWinMain(
 
 
 	//////////////////////////////////////////////////////////////////////////
+	// Find TCER configuration file                                         //
+	//////////////////////////////////////////////////////////////////////////
+
+	// Search for tcer.ini file: first own directory, then wincmd.ini directory
+	WCHAR* ini_path = new WCHAR[BUF_SZ];
+	WCHAR* ini_name = new WCHAR[BUF_SZ];
+	if ((ini_path == NULL) || (ini_name == NULL))
+	{
+		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	WCHAR* exe_path;
+	if (_get_wpgmptr(&exe_path) != 0)
+	{
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (%d)", GetLastError());
+		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	size_t path_len = wcscpylen_s(ini_path, BUF_SZ, exe_path);
+
+	size_t idx_slash, idx_dot;
+	idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
+	idx_dot = wcsrchr_pos(ini_path, path_len, L'.');
+	size_t ini_name_len = path_len - idx_slash;
+	wcscpylen_s(ini_name, BUF_SZ, ini_path + idx_slash);
+	if ((idx_dot == 0) || ((idx_slash != 0) && (idx_dot < idx_slash)))
+	{
+		// Extension not found, append '.ini'
+		if (ini_name_len + 5 > BUF_SZ)
+		{
+			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			return 1;
+		}
+		wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
+	}
+	else
+	{
+		// Extension found, replace with 'ini'
+		idx_dot -= idx_slash;
+		if (idx_dot + 4 > BUF_SZ)
+		{
+			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			return 1;
+		}
+		wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
+		ini_name_len = idx_dot + 3;
+	}
+	if (idx_slash + ini_name_len + 1 > BUF_SZ)
+	{
+		MessageBox(tc_main_wnd, L"Too long path to INI!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
+
+	// INI file path constructed, check the file existence
+	if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
+	{
+		// File does not exist, search wincmd.ini directory
+		path_len = GetEnvironmentVariable(L"COMMANDER_INI", ini_path, BUF_SZ);
+		if (path_len == 0)
+		{
+			MessageBox(tc_main_wnd, L"COMMANDER_INI variable undefined!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			return 1;
+		}
+		idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
+		if (idx_slash == 0)
+		{
+			// File name only, replace it with INI file name
+			wcscpylen_s(ini_path, BUF_SZ, ini_name);
+		}
+		else
+		{
+			// Keep path, replace file name
+			if (idx_slash + ini_name_len + 1 > BUF_SZ)
+			{
+				MessageBox(tc_main_wnd, L"Too long path to myself!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+				return 1;
+			}
+			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
+		}
+		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
+		{
+			MessageBox(tc_main_wnd, L"Configuration file not found!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			return 1;
+		}
+	}
+	delete[] ini_name;
+
+
+	//////////////////////////////////////////////////////////////////////////
+	// Read general TCER configuration                                      //
+	//////////////////////////////////////////////////////////////////////////
+
+	size_t MaxItems = GetPrivateProfileInt(L"Configuration", L"MaxItems", 256, ini_path);
+	size_t MaxShiftF4MSeconds = GetPrivateProfileInt(L"Configuration", L"MaxShiftF4MSeconds", 2000, ini_path);
+	bool ClearSelection = (GetPrivateProfileInt(L"Configuration", L"ClearSelection", 1, ini_path) != 0);
+
+
+	//////////////////////////////////////////////////////////////////////////
 	// Translate list of items into list of paths                           //
 	//////////////////////////////////////////////////////////////////////////
 
@@ -520,8 +619,9 @@ int APIENTRY wWinMain(
 			file_time64.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
 			local_time64.HighPart = local_time.dwHighDateTime;
 			local_time64.LowPart = local_time.dwLowDateTime;
-			// TODO: [1:HIGH] Make number of milliseconds (2000) configurable (move INI reading code upper)
-			if (local_time64.QuadPart - file_time64.QuadPart < 2000 * 10000)
+			// Consider the file just created if it is older than MaxShiftF4MSeconds milliseconds
+			// (2000 milliseconds by default)
+			if (local_time64.QuadPart - file_time64.QuadPart < MaxShiftF4MSeconds * 10000)
 			{
 				edit_paths->Append(input_file);
 				input_file = NULL;
@@ -605,103 +705,8 @@ int APIENTRY wWinMain(
 	if (input_file != NULL)
 		delete[] input_file;
 
-	//////////////////////////////////////////////////////////////////////////
-	// Find TCER configuration file                                         //
-	//////////////////////////////////////////////////////////////////////////
-
-	// Search for tcer.ini file: first own directory, then wincmd.ini directory
-	WCHAR* ini_path = new WCHAR[BUF_SZ];
-	WCHAR* ini_name = new WCHAR[BUF_SZ];
-	if ((ini_path == NULL) || (ini_name == NULL))
-	{
-		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
-	}
-	WCHAR* exe_path;
-	if (_get_wpgmptr(&exe_path) != 0)
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (%d)", GetLastError());
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
-	}
-	size_t path_len = wcscpylen_s(ini_path, BUF_SZ, exe_path);
-
-	size_t idx_slash, idx_dot;
-	idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
-	idx_dot = wcsrchr_pos(ini_path, path_len, L'.');
-	size_t ini_name_len = path_len - idx_slash;
-	wcscpylen_s(ini_name, BUF_SZ, ini_path + idx_slash);
-	if ((idx_dot == 0) || ((idx_slash != 0) && (idx_dot < idx_slash)))
-	{
-		// Extension not found, append '.ini'
-		if (ini_name_len + 5 > BUF_SZ)
-		{
-			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
-		}
-		wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
-	}
-	else
-	{
-		// Extension found, replace with 'ini'
-		idx_dot -= idx_slash;
-		if (idx_dot + 4 > BUF_SZ)
-		{
-			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
-		}
-		wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
-		ini_name_len = idx_dot + 3;
-	}
-	if (idx_slash + ini_name_len + 1 > BUF_SZ)
-	{
-		MessageBox(tc_main_wnd, L"Too long path to INI!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
-	}
-	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
-
-	// INI file path constructed, check the file existence
-	if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
-	{
-		// File does not exist, search wincmd.ini directory
-		path_len = GetEnvironmentVariable(L"COMMANDER_INI", ini_path, BUF_SZ);
-		if (path_len == 0)
-		{
-			MessageBox(tc_main_wnd, L"COMMANDER_INI variable undefined!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
-		}
-		idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
-		if (idx_slash == 0)
-		{
-			// File name only, replace it with INI file name
-			wcscpylen_s(ini_path, BUF_SZ, ini_name);
-		}
-		else
-		{
-			// Keep path, replace file name
-			if (idx_slash + ini_name_len + 1 > BUF_SZ)
-			{
-				MessageBox(tc_main_wnd, L"Too long path to myself!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-				return 1;
-			}
-			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
-		}
-		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
-		{
-			MessageBox(tc_main_wnd, L"Configuration file not found!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
-		}
-	}
-	delete[] ini_name;
-
-	//////////////////////////////////////////////////////////////////////////
-	// Read general TCER configuration                                      //
-	//////////////////////////////////////////////////////////////////////////
-
-	size_t MaxItems = GetPrivateProfileInt(L"Configuration", L"MaxItems", 256, ini_path);
-//	size_t MaxShiftF4MSeconds = GetPrivateProfileInt(L"Configuration", L"MaxShiftF4MSeconds", 2000, ini_path);
-	bool ClearSelection = (GetPrivateProfileInt(L"Configuration", L"ClearSelection", 1, ini_path) != 0);
-
+	// Check for the number of files to be opened
+	// (in case Ctrl+A, F4 was accidentally pressed in a huge directory)
 	sel_items_num = edit_paths->GetLength();
 	if ((MaxItems != 0) && (sel_items_num > MaxItems))
 	{
@@ -710,8 +715,9 @@ int APIENTRY wWinMain(
 			return 0;
 	}
 
+
 	//////////////////////////////////////////////////////////////////////////
-	// Read TCER options for the first extension                            //
+	// Read TCER options for the 'active file' extension                    //
 	//////////////////////////////////////////////////////////////////////////
 
 	WCHAR* edit_path = (*edit_paths)[active_item];
@@ -799,6 +805,10 @@ int APIENTRY wWinMain(
 	size_t cur_pos;
 	if (is_mdi)
 	{
+		// Cycle all the elements to edit, concatenate them into command line.
+		// As soon as command line length exceeds CMDLINE_BUF_SZ, roll back the latest
+		// added item, insert the command line into the execution queue and start
+		// constructing the new command line starting from the currently processed file.
 		// TODO: [3:MEDIUM] Optimize, get rid of code duplication
 		WCHAR* cmd_line = new WCHAR[CMDLINE_BUF_SZ];
 		if (cmd_line == NULL)
@@ -848,6 +858,9 @@ int APIENTRY wWinMain(
 	}
 	else
 	{
+		// Cycle all the elements to edit, concatenate each item separately
+		// with the editor path/args and insert these single-filed command lines
+		// into the execution queue.
 		const size_t sdi_buf_sz = BUF_SZ * 3 + 6;
 		for (i = 0; i < edit_paths->GetLength(); ++i)
 		{
@@ -869,6 +882,7 @@ int APIENTRY wWinMain(
 	delete edit_paths;
 	delete[] editor_path;
 
+	// Run all the prepared command lines
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
 	for (i = 0; i < cmd_lines->GetLength(); ++i)
