@@ -560,6 +560,11 @@ int APIENTRY wWinMain(
 					active_item = 0;
 			}
 		}
+		if ((sel_items_num > 0) && (edit_paths->GetLength() == 0))
+		{
+			MessageBox(tc_main_wnd, L"None of the selected elements could be opened!", L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			return 1;
+		}
 	}
 
 	// e. Get focused element
@@ -899,7 +904,6 @@ int APIENTRY wWinMain(
 
 	// TODO: [3:MEDIUM] Option to change editor's window placement (max, min)
 	// TODO: [9:IDLE] Detect tree mode
-	// TODO: [1:HIGH] Decide: If several dirs selected and no files -> open focused file or show error?
 	// TODO: [9:IDLE] Accept lists of extensions in INI, not only single items
 	// TODO: [5:LOW] Support virtual folders
 	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
