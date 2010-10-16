@@ -113,6 +113,11 @@ After that open the Configuration dialog in TC, select the page "Edit/View" and 
     <td>When the number of selected files exceeds the number specified here, additional confirmation request will be displayed. The value 0 turns it off.</td>
   </tr>
   <tr>
+    <td class="ini-key">MaxShiftF4MSeconds=2000</td>
+    <td style="width: 1em;"></td>
+    <td>To distinguish between <code>F4</code> and <code>Shift+F4</code> TCER checks the timestamp. If the file passed to editor has been created just now, it means <code>Shift+F4</code> and this file only is sent to the editor. This key configures the maximum error: time length (in milliseconds) after which the file is no longer "created just now".</td>
+  </tr>
+  <tr>
     <td class="ini-key">ClearSelection=1</td>
     <td style="width: 1em;"></td>
     <td>If set to 1, the selection in the TC panel will be automatically cleared after launching the editor.</td>
