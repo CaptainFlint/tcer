@@ -2,7 +2,7 @@
 
 #include "resource.h"
 
-typedef enum _PROCESSINFOCLASS {
+enum PROCESSINFOCLASS {
     ProcessBasicInformation,
     ProcessQuotaLimits,
     ProcessIoCounters,
@@ -55,18 +55,18 @@ typedef enum _PROCESSINFOCLASS {
     ProcessConsoleHostProcess,
     ProcessWindowInformation,
     MaxProcessInfoClass             // MaxProcessInfoClass should always be the last enum
-} PROCESSINFOCLASS;
+};
 
 typedef LONG NTSTATUS;
 
-typedef struct _PROCESS_BASIC_INFORMATION {
+struct PROCESS_BASIC_INFORMATION {
     NTSTATUS ExitStatus;
     PVOID PebBaseAddress;
     ULONG_PTR AffinityMask;
     LONG BasePriority;
     ULONG_PTR UniqueProcessId;
     ULONG_PTR InheritedFromUniqueProcessId;
-} PROCESS_BASIC_INFORMATION, *PPROCESS_BASIC_INFORMATION;
+};
 
 typedef NTSTATUS (WINAPI *tNtQueryInformationProcess)(
 	HANDLE ProcessHandle,

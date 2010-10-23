@@ -10,7 +10,7 @@ protected:
 
 public:
 	Array(size_t len = 0);
-	~Array(void);
+	~Array();
 
 	size_t GetLength() const { return length; }
 	const T& operator [](size_t idx) const { _ASSERT((idx < length) && (data != NULL)); return data[idx]; }
@@ -28,7 +28,7 @@ template <class T> Array<T>::Array(size_t len)
 		data = NULL;
 }
 
-template <class T> Array<T>::~Array(void)
+template <class T> Array<T>::~Array()
 {
 	if (data != NULL)
 		delete[] data;
@@ -59,10 +59,10 @@ class ArrayPtr : public Array<T*>
 {
 public:
 	ArrayPtr(size_t len = 0) : Array<T*>(len) {}
-	~ArrayPtr(void);
+	~ArrayPtr();
 };
 
-template <class T> ArrayPtr<T>::~ArrayPtr(void)
+template <class T> ArrayPtr<T>::~ArrayPtr()
 {
 	if (data != NULL)
 	{

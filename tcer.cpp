@@ -53,6 +53,14 @@ void strip_file_data(WCHAR* elem)
 		if (len == 0)
 			return;
 	}
+	if ((elem[len] < L'0') || (elem[len] > L'9'))
+	{
+		// The Size column contains unit name delimited by space from the value,
+		// the unit only was stripped, now strip the value
+		len = wcsrchr_pos(elem, len - 1, L' ');
+		if (len == 0)
+			return;
+	}
 	elem[len - 1] = L'\0';
 }
 
@@ -752,7 +760,7 @@ int APIENTRY wWinMain(
 	}
 	delete[] file_ext;
 
-	// Read the efitor settings
+	// Read the editor settings
 	BOOL is_mdi = GetPrivateProfileInt(ini_section, L"MDI", 0, ini_path);
 	WCHAR* tmp_buf = new WCHAR[BUF_SZ];
 	if (tmp_buf == NULL)

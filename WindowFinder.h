@@ -10,8 +10,8 @@ class WindowFinder
 {
 private:
 	// Static class, no instances allowed
-	WindowFinder(void) {};
-	~WindowFinder(void) {};
+	WindowFinder() {};
+	~WindowFinder() {};
 
 	// Internal search instance data
 	struct SearchData
