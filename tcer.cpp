@@ -64,6 +64,63 @@ void strip_file_data(WCHAR* elem)
 	elem[len - 1] = L'\0';
 }
 
+//#define LOGGING
+
+#ifdef LOGGING
+#undef MessageBox
+#define MessageBox MessageBoxLog
+
+WCHAR LogFile[MAX_PATH];
+void LogMsg(const WCHAR* str)
+{
+	const size_t BUF_SZ = 1024;
+	WCHAR msg_buf[BUF_SZ];
+	HANDLE hlog;
+	do
+	{
+		DWORD err;
+		hlog = CreateFile(LogFile, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hlog == INVALID_HANDLE_VALUE)
+		{
+			err = GetLastError();
+			if (err == ERROR_SHARING_VIOLATION)
+			{
+				Sleep(500);
+				continue;
+			}
+			swprintf_s(msg_buf, BUF_SZ, L"Failed to create log file (%d)", err);
+			MessageBoxW(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+			return;
+		}
+		else
+			break;
+	} while (true);
+	DWORD bw;
+	LARGE_INTEGER sz;
+	sz.QuadPart = 0L;
+	SetFilePointerEx(hlog, sz, NULL, FILE_END);
+	if (GetFileSizeEx(hlog, &sz) && (sz.QuadPart == 0L))
+		WriteFile(hlog, "\xff\xfe", 2, &bw, NULL);
+	if (!WriteFile(hlog, str, wcslen(str) * sizeof(WCHAR), &bw, NULL))
+	{
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to write to log file (%d)", GetLastError());
+		MessageBoxW(NULL, msg_buf, L"TC Edit Redirector", MB_ICONERROR | MB_OK);
+	}
+	CloseHandle(hlog);
+}
+
+int MessageBoxLog(HWND w, const WCHAR* m, const WCHAR* t, UINT f)
+{
+	WCHAR buf[1024];
+	wcscpy_s(buf, L"MessageBox called: <");
+	wcscat_s(buf, m);
+	wcscat_s(buf, L">\n");
+	LogMsg(buf);
+	return MessageBoxW(w, m, t, f);
+}
+
+#endif
+
 int APIENTRY wWinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -91,6 +148,18 @@ int APIENTRY wWinMain(
 		MessageBox(NULL, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
+
+#ifdef LOGGING
+	if (GetTempPath(MAX_PATH, LogFile) == 0)
+	{
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain TEMP path (%d)", GetLastError());
+		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+		return 1;
+	}
+	wcscat_s(LogFile, L"tcer_trace.log");
+	DeleteFile(LogFile);
+	MessageBox(NULL, L"TCER Started!", MsgBoxTitle, MB_ICONINFORMATION | MB_OK);
+#endif
 
 	HWND tc_main_wnd = NULL;
 
@@ -143,6 +212,11 @@ int APIENTRY wWinMain(
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
+
+#ifdef LOGGING
+	LogMsg(L"ntdll.dll loaded.\n");
+#endif
+
 	tNtQueryInformationProcess fNtQueryInformationProcess = (tNtQueryInformationProcess)GetProcAddress(ntdll, "NtQueryInformationProcess");
 	if (fNtQueryInformationProcess == NULL)
 	{
@@ -151,10 +225,19 @@ int APIENTRY wWinMain(
 		return 1;
 	}
 
+#ifdef LOGGING
+	LogMsg(L"NtQueryInformationProcess address obtained.\n");
+#endif
+
 	// Get PID of the parent process (TC)
 	PROCESS_BASIC_INFORMATION proc_info;
 	ULONG ret_len;
 	NTSTATUS query_res = fNtQueryInformationProcess(GetCurrentProcess(), ProcessBasicInformation, &proc_info, sizeof(proc_info), &ret_len);
+
+#ifdef LOGGING
+	LogMsg(L"Process information obtained.\n");
+#endif
+
 	if (!NT_SUCCESS(query_res))
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x%08x)", query_res);
@@ -162,6 +245,11 @@ int APIENTRY wWinMain(
 		return 1;
 	}
 	FreeLibrary(ntdll);
+
+#ifdef LOGGING
+	LogMsg(L"ntdll.dll unloaded.\n");
+#endif
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// 2. Find the active file panel handle.
@@ -173,19 +261,39 @@ int APIENTRY wWinMain(
 #else
 	tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", proc_info.InheritedFromUniqueProcessId);
 #endif
+
+#ifdef LOGGING
+	LogMsg(L"Looked for TC main window.\n");
+#endif
+
 	if (tc_main_wnd == NULL)
 	{
 		MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
 
+#ifdef LOGGING
+	LogMsg(L"Found it.\n");
+#endif
+
+
 	// Find TC file panels
 	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, L"TMyListBox", 0);
+
+#ifdef LOGGING
+	LogMsg(L"Looked for TC panels.\n");
+#endif
+
 	if (tc_panels->GetLength() == 0)
 	{
 		MessageBox(tc_main_wnd, L"Could not find panels in the TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
+
+#ifdef LOGGING
+	LogMsg(L"Found them.\n");
+#endif
+
 
 	// Determine the focused panel
 	HWND tc_panel = NULL;
@@ -228,6 +336,11 @@ int APIENTRY wWinMain(
 		return 1;
 	}
 
+#ifdef LOGGING
+	LogMsg(L"Determined the focused panel.\n");
+#endif
+
+
 	//////////////////////////////////////////////////////////////////////////
 	// 3. Get current path from TC command line.
 
@@ -245,6 +358,11 @@ int APIENTRY wWinMain(
 		MessageBox(tc_main_wnd, L"Failed to find TC command line!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
+
+#ifdef LOGGING
+	LogMsg(L"Found command line control.\n");
+#endif
+
 	for (i = 0; i < tc_panels->GetLength(); ++i)
 	{
 		if (WindowFinder::FindWnd((*tc_panels)[i], true, L"TMyTabControl", 0) != NULL)
@@ -269,6 +387,11 @@ int APIENTRY wWinMain(
 		break;
 	}
 	delete tc_panels;
+
+#ifdef LOGGING
+	LogMsg(L"Obtained path value from the command line control.\n");
+#endif
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// 4. Get active panel title.
@@ -363,6 +486,11 @@ int APIENTRY wWinMain(
 			sel_items_num = sel_items_num2;
 	}
 
+#ifdef LOGGING
+	LogMsg(L"Obtained selected elements indices.\n");
+#endif
+
+
 	// Get the elements themselves
 	size_t invalid_paths = 0;
 
@@ -415,6 +543,10 @@ int APIENTRY wWinMain(
 	if (sel_items_idx != NULL)
 		delete[] sel_items_idx;
 
+#ifdef LOGGING
+	LogMsg(L"Obtained elements text.\n");
+#endif
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// Find TCER configuration file                                         //
@@ -436,6 +568,11 @@ int APIENTRY wWinMain(
 		return 1;
 	}
 	size_t path_len = wcscpylen_s(ini_path, BUF_SZ, exe_path);
+
+#ifdef LOGGING
+	LogMsg(L"Got path to tcer.exe.\n");
+#endif
+
 
 	size_t idx_slash, idx_dot;
 	idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
@@ -471,9 +608,17 @@ int APIENTRY wWinMain(
 	}
 	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 
+#ifdef LOGGING
+	LogMsg(L"INI path calculated.\n");
+#endif
+
+
 	// INI file path constructed, check the file existence
 	if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
 	{
+#ifdef LOGGING
+	LogMsg(L"File not found, search wincmd.ini directory.\n");
+#endif
 		// File does not exist, search wincmd.ini directory
 		path_len = GetEnvironmentVariable(L"COMMANDER_INI", ini_path, BUF_SZ);
 		if (path_len == 0)
@@ -497,13 +642,28 @@ int APIENTRY wWinMain(
 			}
 			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 		}
+
+#ifdef LOGGING
+	LogMsg(L"Calculated second INI path.\n");
+#endif
+
 		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
 		{
+
+#ifdef LOGGING
+	LogMsg(L"File2 not found, exiting.\n");
+#endif
+
 			MessageBox(tc_main_wnd, L"Configuration file not found!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			return 1;
 		}
 	}
 	delete[] ini_name;
+
+#ifdef LOGGING
+	LogMsg(L"INI file found, continue.\n");
+#endif
+
 
 
 	//////////////////////////////////////////////////////////////////////////
@@ -513,6 +673,11 @@ int APIENTRY wWinMain(
 	size_t MaxItems = GetPrivateProfileInt(L"Configuration", L"MaxItems", 256, ini_path);
 	size_t MaxShiftF4MSeconds = GetPrivateProfileInt(L"Configuration", L"MaxShiftF4MSeconds", 2000, ini_path);
 	bool ClearSelection = (GetPrivateProfileInt(L"Configuration", L"ClearSelection", 1, ini_path) != 0);
+
+#ifdef LOGGING
+	LogMsg(L"Obtained general configuration.\n");
+#endif
+
 
 
 	//////////////////////////////////////////////////////////////////////////
@@ -713,6 +878,11 @@ int APIENTRY wWinMain(
 	if (input_file != NULL)
 		delete[] input_file;
 
+#ifdef LOGGING
+	LogMsg(L"Translated list of items into list of paths to open.\n");
+#endif
+
+
 	// Check for the number of files to be opened
 	// (in case Ctrl+A, F4 was accidentally pressed in a huge directory)
 	sel_items_num = edit_paths->GetLength();
@@ -760,6 +930,11 @@ int APIENTRY wWinMain(
 	}
 	delete[] file_ext;
 
+#ifdef LOGGING
+	LogMsg(L"Found editor INI section.\n");
+#endif
+
+
 	// Read the editor settings
 	BOOL is_mdi = GetPrivateProfileInt(ini_section, L"MDI", 0, ini_path);
 	WCHAR* tmp_buf = new WCHAR[BUF_SZ];
@@ -801,6 +976,11 @@ int APIENTRY wWinMain(
 	delete[] ini_path;
 	delete[] tmp_buf;
 	delete[] ini_section;
+
+#ifdef LOGGING
+	LogMsg(L"Obtained editor settings.\n");
+#endif
+
 
 	// Construct command lines taking into account the MDI setting and the maximum
 	// allowed command line length CMDLINE_BUF_SZ (32k).
@@ -890,6 +1070,11 @@ int APIENTRY wWinMain(
 	delete edit_paths;
 	delete[] editor_path;
 
+#ifdef LOGGING
+	LogMsg(L"Constructed list of command lines to run.\n");
+#endif
+
+
 	// Run all the prepared command lines
 	PROCESS_INFORMATION pi;
 	STARTUPINFO si;
@@ -921,6 +1106,11 @@ int APIENTRY wWinMain(
 
 	delete cmd_lines;
 	delete[] msg_buf;
+
+#ifdef LOGGING
+	LogMsg(L"Executed all the command lines successfully, exiting.\n");
+#endif
+
 
 	// TODO: [3:MEDIUM] Option to change editor's window placement (max, min)
 	// TODO: [9:IDLE] Detect tree mode
