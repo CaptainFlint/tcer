@@ -5,33 +5,12 @@
 #include "tcer.h"
 #include "WindowFinder.h"
 
-// Copy a string and return its length
-size_t wcscpylen_s(WCHAR *strDestination, size_t numberOfElements, const WCHAR *strSource)
-{
-	size_t count = 0;
-	while (((*strDestination++ = *strSource++) != 0) && (--numberOfElements > 0))
-		++count;
-	return count;
-}
-
-// Scan a string for the last occurrence of a character.
-// Return index of the next position or 0 if no such character.
-size_t wcsrchr_pos(const WCHAR* str, size_t start_pos, WCHAR c)
-{
-	size_t idx = start_pos;
-	while (idx > 0)
-	{
-		if (str[--idx] == c)
-			return idx + 1;
-	}
-	return 0;
-}
-
+// Strips the Full View data: size, date, time, attributes
 void strip_file_data(WCHAR* elem)
 {
 	const WCHAR bad_chars[] = L"<>:|*\"";
 	size_t pos = wcscspn(elem, bad_chars);
-	// Full path, colon at the second position
+	// Full path, colon at the second position => searching for the next bad character
 	if (pos == 1)
 		pos = 2 + wcscspn(elem + 2, bad_chars);
 	// Not found
@@ -64,7 +43,11 @@ void strip_file_data(WCHAR* elem)
 	elem[len - 1] = L'\0';
 }
 
-int APIENTRY wWinMain(
+HANDLE ProcessHeap;
+
+#ifdef _DEBUG
+
+int WINAPI wWinMain(
 	HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
 	LPWSTR    lpCmdLine,
@@ -75,12 +58,21 @@ int APIENTRY wWinMain(
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(nCmdShow);
 
+#else
+
+int wWinMainCRTStartup()
+{
+	LPWSTR lpCmdLine;
+
+#endif
+
 	/*
 		If this code is used somewhere else, keep in mind that when an error occurs,
 		resources are not freed (program terminates, so all resources are freed
 		by the system anyway).
 	*/
 
+	ProcessHeap = GetProcessHeap();
 	const WCHAR* const MsgBoxTitle = L"TC Edit Redirector";
 
 	const size_t BUF_SZ = 1024;
@@ -139,14 +131,14 @@ int APIENTRY wWinMain(
 	HMODULE ntdll = LoadLibrary(L"ntdll.dll");
 	if (ntdll == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	tNtQueryInformationProcess fNtQueryInformationProcess = (tNtQueryInformationProcess)GetProcAddress(ntdll, "NtQueryInformationProcess");
 	if (fNtQueryInformationProcess == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find NtQueryInformationProcess (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to find NtQueryInformationProcess (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -157,7 +149,7 @@ int APIENTRY wWinMain(
 	NTSTATUS query_res = fNtQueryInformationProcess(GetCurrentProcess(), ProcessBasicInformation, &proc_info, sizeof(proc_info), &ret_len);
 	if (!NT_SUCCESS(query_res))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x%08x)", query_res);
+		swprintf_s_hex(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x", query_res, L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -199,7 +191,7 @@ int APIENTRY wWinMain(
 #endif
 	if (!GetGUIThreadInfo(tid, &gti))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -260,7 +252,7 @@ int APIENTRY wWinMain(
 		tc_curpath_cmdline_len = GetWindowText(tc_cmdline, tc_curpath_cmdline, BUF_SZ);
 		if (tc_curpath_cmdline_len + 1 >= BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long path (%d characters)!", tc_curpath_cmdline_len);
+			swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			return 1;
 		}
@@ -279,7 +271,7 @@ int APIENTRY wWinMain(
 	tc_panels = WindowFinder::FindWnds(tc_main_wnd, false, L"TPathPanel", 0);
 	if (tc_panels->GetLength() != 2)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (%d), should be 2!", tc_panels->GetLength());
+		swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -288,7 +280,7 @@ int APIENTRY wWinMain(
 	RECT tc_panel_rect, path_panel1_rect, path_panel2_rect;
 	if (GetWindowRect(tc_panel, &tc_panel_rect) == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -296,7 +288,7 @@ int APIENTRY wWinMain(
 		||
 		(GetWindowRect((*tc_panels)[1], &path_panel2_rect) == 0))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -330,7 +322,7 @@ int APIENTRY wWinMain(
 	size_t tc_curpath_panel_len = GetWindowText(tc_path_panel, tc_curpath_panel, BUF_SZ);
 	if (tc_curpath_panel_len + 1 >= BUF_SZ)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Too long path (%d characters)!", tc_curpath_panel_len);
+		swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -428,14 +420,13 @@ int APIENTRY wWinMain(
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
-	WCHAR* exe_path;
-	if (_get_wpgmptr(&exe_path) != 0)
+	if (GetModuleFileName(NULL, ini_path, BUF_SZ) == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (%d)", GetLastError());
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
-	size_t path_len = wcscpylen_s(ini_path, BUF_SZ, exe_path);
+	size_t path_len = wcslen(ini_path);
 
 	size_t idx_slash, idx_dot;
 	idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
@@ -519,7 +510,7 @@ int APIENTRY wWinMain(
 	// Translate list of items into list of paths                           //
 	//////////////////////////////////////////////////////////////////////////
 
-	// TODO: [1:HIGH] Support opening files directly from %TEMP%\_tc\ 
+	// TODO: [1:HIGH] Support opening files directly from %TEMP%\_tc\
 
 	/*
 		Current implementation:
@@ -534,6 +525,10 @@ int APIENTRY wWinMain(
 		5) If no elements selected, open the focused file.
 		6) If it fails, open the file supplied via command line.
 	*/
+
+#ifndef _DEBUG
+	lpCmdLine = GetCommandLine();
+#endif
 
 	bool WaitForTerminate = false;
 	ArrayPtr<WCHAR>* edit_paths = new ArrayPtr<WCHAR>;
@@ -562,7 +557,7 @@ int APIENTRY wWinMain(
 			input_file[len - 1] = L'\0';
 		if (len >= BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long input path (>=%d characters)!", len);
+			swprintf_s(msg_buf, BUF_SZ, L"Too long input path (>=", len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			return 1;
 		}
@@ -579,7 +574,7 @@ int APIENTRY wWinMain(
 	size_t temp_dir_len = GetTempPath(BUF_SZ, temp_dir);
 	if (temp_dir_len + 4 >= BUF_SZ)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (%d characters)!", temp_dir_len);
+		swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -718,7 +713,7 @@ int APIENTRY wWinMain(
 	sel_items_num = edit_paths->GetLength();
 	if ((MaxItems != 0) && (sel_items_num > MaxItems))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"%d files are to be opened!\nAre you sure you wish to continue?", sel_items_num);
+		swprintf_s(msg_buf, BUF_SZ, L"", sel_items_num, L" files are to be opened!\nAre you sure you wish to continue?");
 		if (MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONWARNING | MB_OKCANCEL) == IDCANCEL)
 			return 0;
 	}
@@ -772,14 +767,14 @@ int APIENTRY wWinMain(
 	path_len = GetPrivateProfileString(ini_section, L"FullPath", NULL, tmp_buf + 1, BUF_SZ - 1, ini_path);
 	if (path_len == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"INI key [%s]::FullPath is missing!", tmp_buf);
+		swprintf_s(msg_buf, BUF_SZ, L"INI key [", ini_section, L"]::FullPath is missing!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
 	path_len = ExpandEnvironmentStrings(tmp_buf, editor_path, 2 * BUF_SZ);
 	if ((path_len == 0) && (path_len > 2 * BUF_SZ - 1))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'%s'", tmp_buf);
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'", tmp_buf, L"'");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		return 1;
 	}
@@ -891,16 +886,18 @@ int APIENTRY wWinMain(
 	delete[] editor_path;
 
 	// Run all the prepared command lines
-	PROCESS_INFORMATION pi;
-	STARTUPINFO si;
+	__declspec(align(16)) AlignWrapper<PROCESS_INFORMATION> pi;
+	__declspec(align(16)) AlignWrapper<STARTUPINFO> si;
+	PROCESS_INFORMATION* pi_ptr = (PROCESS_INFORMATION*)pi;
+	STARTUPINFO* si_ptr = (STARTUPINFO*)si;
 	for (i = 0; i < cmd_lines->GetLength(); ++i)
 	{
-		ZeroMemory(&pi, sizeof(PROCESS_INFORMATION));
-		ZeroMemory(&si, sizeof(STARTUPINFO));
-		si.cb = sizeof(STARTUPINFO);
-		if (CreateProcess(NULL, (*cmd_lines)[i], NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, &si, &pi) == 0)
+		zeromem(&pi);
+		zeromem(&si);
+		si_ptr->cb = sizeof(STARTUPINFO);
+		if (CreateProcess(NULL, (*cmd_lines)[i], NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, si_ptr, pi_ptr) == 0)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Failed to start editor (%d)", GetLastError());
+			swprintf_s(msg_buf, BUF_SZ, L"Failed to start editor (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			return 1;
 		}
@@ -914,9 +911,9 @@ int APIENTRY wWinMain(
 		// TODO: [5:LOW] Make sure it works for multiple iterations (for the future)
 		// TODO: [5:LOW] If several MDI instances are started, wait for each to terminate (otherwise the main instance may not get in time to open all the files)
 		if (WaitForTerminate)
-			WaitForSingleObject(pi.hProcess, INFINITE);
-		CloseHandle(pi.hProcess);
-		CloseHandle(pi.hThread);
+			WaitForSingleObject(pi_ptr->hProcess, INFINITE);
+		CloseHandle(pi_ptr->hProcess);
+		CloseHandle(pi_ptr->hThread);
 	}
 
 	delete cmd_lines;

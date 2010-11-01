@@ -12,12 +12,10 @@
 #include <windows.h>
 
 // C RunTime Header Files
-#include <stdlib.h>
-#include <malloc.h>
-#include <memory.h>
 #include <tchar.h>
 #include <crtdbg.h>
 
+#include "crtrepl.h"
 
 #ifdef _UNICODE
 #if defined _M_IX86

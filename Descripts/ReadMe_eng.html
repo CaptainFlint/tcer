@@ -52,7 +52,7 @@
 
 <h1>Total Commander Edit Redirector</h1>
 <p>
-<b>Version 1.0.0.0</b>
+<b>Version 1.1.0.0</b>
 </p>
 <p>
 Addon for Total Commander that allows to edit files in different editors depending on the extensions.
@@ -70,6 +70,7 @@ Distributed under <a href="Artistic%20License%202.0.html">Artistic License 2.0</
 
 <p>
 <b>System requirements:</b><br />
+Processor with SSE2 (Intel Pentium 4, AMD Athlon 64 and higher)<br />
 Windows 2000 and higher<br />
 Total Commander 7.50&ndash;7.55a
 </p>
@@ -215,6 +216,15 @@ After that open the Configuration dialog in TC, select the page "Edit/View" and 
 
 
 <a name="history"></a><h2>Version history</h2>
+
+<h3>Version 1.1.0.0 (2.11.2010):</h3>
+<ol type="1">
+  <li>Added separate version without SSE optimizations (for old processors).</li>
+  <li>Significantly reduced EXE file size.</li>
+  <li>Fixed: Full view mode was supported only when file sizes did not contain units.</li>
+  <li>Fixed: The program only started on WinXP SP3 and higher.</li>
+  <li>Fixed minor typos.</li>
+</ol>
 
 <h3>Version 1.0.0.0 (16.10.2010):</h3>
 <ol type="1">

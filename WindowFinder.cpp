@@ -1,4 +1,4 @@
-#include "StdAfx.h"
+#include "stdafx.h"
 #include "WindowFinder.h"
 
 // Window enumeration callback function

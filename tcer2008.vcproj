@@ -222,10 +222,12 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="wWinMainCRTStartup"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -303,10 +305,12 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="wWinMainCRTStartup"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -383,10 +387,12 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="wWinMainCRTStartup"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -464,10 +470,12 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkIncremental="1"
+				IgnoreAllDefaultLibraries="true"
 				GenerateDebugInformation="false"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="wWinMainCRTStartup"
 				TargetMachine="17"
 			/>
 			<Tool
@@ -501,6 +509,10 @@
 			Filter="cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx"
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
+			<File
+				RelativePath=".\crtrepl.cpp"
+				>
+			</File>
 			<File
 				RelativePath=".\stdafx.cpp"
 				>
@@ -569,6 +581,10 @@
 			>
 			<File
 				RelativePath=".\Array.h"
+				>
+			</File>
+			<File
+				RelativePath=".\crtrepl.h"
 				>
 			</File>
 			<File
