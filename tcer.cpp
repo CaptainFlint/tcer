@@ -823,6 +823,12 @@ int wWinMainCRTStartup()
 	size_t cur_pos;
 	if (is_mdi)
 	{
+		// If MDI editor is a secondary instance it will terminate immediately.
+		// If it is a first instance, it may open another file and continue to live
+		// even when the original file is closed. Therefore waiting for the process
+		// termination is useless in either case.
+		WaitForTerminate = false;
+
 		// Cycle all the elements to edit, concatenate them into command line.
 		// As soon as command line length exceeds CMDLINE_BUF_SZ, roll back the latest
 		// added item, insert the command line into the execution queue and start

@@ -222,6 +222,7 @@ After that open the Configuration dialog in TC, select the page "Edit/View" and 
   <li>Added separate version without SSE optimizations (for old processors).</li>
   <li>Significantly reduced EXE file size.</li>
   <li>Fixed: Full view mode was supported only when file sizes did not contain units.</li>
+  <li>Fixed: When opening packed file in an MDI editor, TCER does not wait anymore for the process to terminate (reason: one can open within the same editor another file and close the first file, and such closing would not be detected in TC).</li>
   <li>Fixed: The program only started on WinXP SP3 and higher.</li>
   <li>Fixed minor typos.</li>
 </ol>
