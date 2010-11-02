@@ -527,7 +527,22 @@ int wWinMainCRTStartup()
 	*/
 
 #ifndef _DEBUG
+	// CRT code did not run to prepare command line arguments, so do it now
 	lpCmdLine = GetCommandLine();
+
+	// Remove the TCER executable from comand line
+	bool InsideQuotes = false;
+	while ((*lpCmdLine > L' ') || (*lpCmdLine && InsideQuotes))
+	{
+		// Flip the InsideQuotes if current character is a double quote
+		if (*lpCmdLine == L'"')
+			InsideQuotes = !InsideQuotes;
+		++lpCmdLine;
+	}
+
+	// Skip past any white space preceeding the second token.
+	while (*lpCmdLine && (*lpCmdLine <= L' '))
+		++lpCmdLine;
 #endif
 
 	bool WaitForTerminate = false;
