@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "tcer.h"
 #include "WindowFinder.h"
+#include <commctrl.h>
 
 // Strips the Full View data: size, date, time, attributes
 void strip_file_data(WCHAR* elem)
@@ -66,6 +67,8 @@ int wWinMainCRTStartup()
 
 #endif
 
+	InitCommonControls();
+
 	/*
 		If this code is used somewhere else, keep in mind that when an error occurs,
 		resources are not freed (program terminates, so all resources are freed
@@ -81,7 +84,7 @@ int wWinMainCRTStartup()
 	if (msg_buf == NULL)
 	{
 		MessageBox(NULL, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	HWND tc_main_wnd = NULL;
@@ -133,14 +136,14 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	tNtQueryInformationProcess fNtQueryInformationProcess = (tNtQueryInformationProcess)GetProcAddress(ntdll, "NtQueryInformationProcess");
 	if (fNtQueryInformationProcess == NULL)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to find NtQueryInformationProcess (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	// Get PID of the parent process (TC)
@@ -151,7 +154,7 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s_hex(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x", query_res, L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	FreeLibrary(ntdll);
 
@@ -168,7 +171,7 @@ int wWinMainCRTStartup()
 	if (tc_main_wnd == NULL)
 	{
 		MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	// Find TC file panels
@@ -176,7 +179,7 @@ int wWinMainCRTStartup()
 	if (tc_panels->GetLength() == 0)
 	{
 		MessageBox(tc_main_wnd, L"Could not find panels in the TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	// Determine the focused panel
@@ -193,12 +196,12 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	if (gti.hwndFocus == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Failed to determine active panel!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	for (i = 0; i < tc_panels->GetLength(); ++i)
 	{
@@ -212,12 +215,12 @@ int wWinMainCRTStartup()
 	if (tc_panel == NULL)
 	{
 		MessageBox(tc_main_wnd, L"No TC panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	if (GetWindowTextLength(tc_panel) != 0)
 	{
 		MessageBox(tc_main_wnd, L"No TC file panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -227,7 +230,7 @@ int wWinMainCRTStartup()
 	if (tc_curpath_cmdline == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	tc_curpath_cmdline[0] = L'\0';
 	size_t tc_curpath_cmdline_len = 0;
@@ -235,7 +238,7 @@ int wWinMainCRTStartup()
 	if (tc_panels->GetLength() == 0)
 	{
 		MessageBox(tc_main_wnd, L"Failed to find TC command line!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	for (i = 0; i < tc_panels->GetLength(); ++i)
 	{
@@ -254,7 +257,7 @@ int wWinMainCRTStartup()
 		{
 			swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		if (tc_curpath_cmdline_len > 0)
 			tc_curpath_cmdline[tc_curpath_cmdline_len - 1] = L'\\';
@@ -273,7 +276,7 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	// Get the coordinates of the active panel and path panels
@@ -282,7 +285,7 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	if ((GetWindowRect((*tc_panels)[0], &path_panel1_rect) == 0)
 		||
@@ -290,7 +293,7 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	// Find the active path panel
@@ -317,14 +320,14 @@ int wWinMainCRTStartup()
 	if (tc_curpath_panel == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	size_t tc_curpath_panel_len = GetWindowText(tc_path_panel, tc_curpath_panel, BUF_SZ);
 	if (tc_curpath_panel_len + 1 >= BUF_SZ)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	delete[] tc_curpath_panel;
 	*/
@@ -348,7 +351,7 @@ int wWinMainCRTStartup()
 		if (sel_items_idx == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		size_t sel_items_num2 = SendMessage(tc_panel, LB_GETSELITEMS, sel_items_num, (LPARAM)sel_items_idx);
 		if (sel_items_num2 < sel_items_num)
@@ -366,7 +369,7 @@ int wWinMainCRTStartup()
 		if (focus_item_txt == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		if (SendMessage(tc_panel, LB_GETTEXT, focus_item_idx, (LPARAM)focus_item_txt) == 0)
 		{
@@ -379,7 +382,7 @@ int wWinMainCRTStartup()
 	if (sel_items_txt == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	for (i = 0; i < sel_items_num; ++i)
 	{
@@ -393,7 +396,7 @@ int wWinMainCRTStartup()
 		if (tmp == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		if (SendMessage(tc_panel, LB_GETTEXT, sel_items_idx[i], (LPARAM)tmp) == 0)
 			delete[] tmp;
@@ -418,13 +421,13 @@ int wWinMainCRTStartup()
 	if ((ini_path == NULL) || (ini_name == NULL))
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	if (GetModuleFileName(NULL, ini_path, BUF_SZ) == 0)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	size_t path_len = wcslen(ini_path);
 
@@ -439,7 +442,7 @@ int wWinMainCRTStartup()
 		if (ini_name_len + 5 > BUF_SZ)
 		{
 			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
 	}
@@ -450,7 +453,7 @@ int wWinMainCRTStartup()
 		if (idx_dot + 4 > BUF_SZ)
 		{
 			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
 		ini_name_len = idx_dot + 3;
@@ -458,7 +461,7 @@ int wWinMainCRTStartup()
 	if (idx_slash + ini_name_len + 1 > BUF_SZ)
 	{
 		MessageBox(tc_main_wnd, L"Too long path to INI!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 
@@ -470,7 +473,7 @@ int wWinMainCRTStartup()
 		if (path_len == 0)
 		{
 			MessageBox(tc_main_wnd, L"COMMANDER_INI variable undefined!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
 		if (idx_slash == 0)
@@ -484,14 +487,14 @@ int wWinMainCRTStartup()
 			if (idx_slash + ini_name_len + 1 > BUF_SZ)
 			{
 				MessageBox(tc_main_wnd, L"Too long path to myself!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-				return 1;
+				ExitProcess(1);
 			}
 			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 		}
 		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
 		{
 			MessageBox(tc_main_wnd, L"Configuration file not found!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 	}
 	delete[] ini_name;
@@ -550,7 +553,7 @@ int wWinMainCRTStartup()
 	if (edit_paths == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 
 	size_t offset;
@@ -561,7 +564,7 @@ int wWinMainCRTStartup()
 	if (input_file == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	input_file[0] = L'\0';
 	if ((lpCmdLine != NULL) && (lpCmdLine[0] != L'\0'))
@@ -574,7 +577,7 @@ int wWinMainCRTStartup()
 		{
 			swprintf_s(msg_buf, BUF_SZ, L"Too long input path (>=", len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 	}
 
@@ -584,14 +587,14 @@ int wWinMainCRTStartup()
 	if (temp_dir == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	size_t temp_dir_len = GetTempPath(BUF_SZ, temp_dir);
 	if (temp_dir_len + 4 >= BUF_SZ)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	temp_dir[temp_dir_len++] = L'_';
 	temp_dir[temp_dir_len++] = L't';
@@ -657,7 +660,7 @@ int wWinMainCRTStartup()
 			if (tmp == NULL)
 			{
 				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-				return 1;
+				ExitProcess(1);
 			}
 			wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
 			len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, (*sel_items_txt)[i]);
@@ -679,7 +682,7 @@ int wWinMainCRTStartup()
 		if ((sel_items_num > 0) && (edit_paths->GetLength() == 0))
 		{
 			MessageBox(tc_main_wnd, L"None of the selected elements could be opened!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 	}
 
@@ -693,7 +696,7 @@ int wWinMainCRTStartup()
 		if (tmp == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
 		len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, focus_item_txt);
@@ -730,7 +733,7 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"", sel_items_num, L" files are to be opened!\nAre you sure you wish to continue?");
 		if (MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONWARNING | MB_OKCANCEL) == IDCANCEL)
-			return 0;
+			ExitProcess(0);
 	}
 
 
@@ -745,7 +748,7 @@ int wWinMainCRTStartup()
 	if ((file_ext == NULL) || (ini_section == NULL) || (editor_path == NULL))
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	path_len = wcslen(edit_path);
 	idx_slash = wcsrchr_pos(edit_path, path_len, L'\\');
@@ -776,7 +779,7 @@ int wWinMainCRTStartup()
 	if (tmp_buf == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	tmp_buf[0] = L'"';
 	path_len = GetPrivateProfileString(ini_section, L"FullPath", NULL, tmp_buf + 1, BUF_SZ - 1, ini_path);
@@ -784,14 +787,14 @@ int wWinMainCRTStartup()
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"INI key [", ini_section, L"]::FullPath is missing!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	path_len = ExpandEnvironmentStrings(tmp_buf, editor_path, 2 * BUF_SZ);
 	if ((path_len == 0) && (path_len > 2 * BUF_SZ - 1))
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'", tmp_buf, L"'");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	editor_path[path_len - 1] = L'"';
 	editor_path[path_len] = L'\0';
@@ -804,7 +807,7 @@ int wWinMainCRTStartup()
 		if (path_len >= 2 * BUF_SZ)
 		{
 			MessageBox(tc_main_wnd, L"Too long editor path and/or args!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 	}
 
@@ -818,7 +821,7 @@ int wWinMainCRTStartup()
 	if (cmd_lines == NULL)
 	{
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		return 1;
+		ExitProcess(1);
 	}
 	size_t cur_pos;
 	if (is_mdi)
@@ -838,7 +841,7 @@ int wWinMainCRTStartup()
 		if (cmd_line == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 		for (i = 0; i < edit_paths->GetLength(); ++i)
@@ -851,7 +854,7 @@ int wWinMainCRTStartup()
 				if (cmd_line == NULL)
 				{
 					MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-					return 1;
+					ExitProcess(1);
 				}
 				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 			}
@@ -868,7 +871,7 @@ int wWinMainCRTStartup()
 				if (cmd_line == NULL)
 				{
 					MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-					return 1;
+					ExitProcess(1);
 				}
 				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 				cmd_line[cur_pos++] = L' ';
@@ -892,7 +895,7 @@ int wWinMainCRTStartup()
 			if (cmd_line == NULL)
 			{
 				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-				return 1;
+				ExitProcess(1);
 			}
 			cur_pos = wcscpylen_s(cmd_line, sdi_buf_sz, editor_path);
 			cmd_line[cur_pos++] = L' ';
@@ -920,7 +923,7 @@ int wWinMainCRTStartup()
 		{
 			swprintf_s(msg_buf, BUF_SZ, L"Failed to start editor (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-			return 1;
+			ExitProcess(1);
 		}
 		if (ClearSelection)
 		{
@@ -946,6 +949,7 @@ int wWinMainCRTStartup()
 	// TODO: [5:LOW] Support virtual folders
 	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
 	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
+	// TODO: [0:BLOCKER] Shift+F4 is not detected on exFAT! (check for FAT too)
 
-	return 0;
+	ExitProcess(0);
 }

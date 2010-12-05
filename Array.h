@@ -43,7 +43,7 @@ template <class T> bool Array<T>::Append(T elem)
 		if (new_data == NULL)
 			return false;
 		if (length != 0)
-			memcpy_s(new_data, new_alloc_sz, data, length * sizeof(T));
+			memcpy_s(new_data, new_alloc_sz * sizeof(T), data, length * sizeof(T));
 		if (data != NULL)
 			delete[] data;
 		data = new_data;

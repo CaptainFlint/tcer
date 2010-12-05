@@ -110,7 +110,7 @@ size_t wcsrchr_pos(const WCHAR* str, size_t start_pos, WCHAR c);
 size_t wcscspn(const wchar_t* string, const wchar_t* control);
 
 // [lib] Copies bytes between buffers
-errno_t memcpy_s(void* dest, size_t numberOfElements, const void* src, size_t count);
+errno_t memcpy_s(void* dest, size_t numberOfBytes, const void* src, size_t count);
 
 // [lib] Compare the specified number of characters of two strings
 int wcsncmp(const WCHAR* string1, const WCHAR* string2, size_t count);

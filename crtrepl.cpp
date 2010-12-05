@@ -46,10 +46,10 @@ size_t wcscspn(const wchar_t* string, const wchar_t* control)
 }
 
 // [lib] Copies bytes between buffers
-errno_t memcpy_s(void* dest, size_t numberOfElements, const void* src, size_t count)
+errno_t memcpy_s(void* dest, size_t numberOfBytes, const void* src, size_t count)
 {
-	if (count > numberOfElements)
-		count = numberOfElements;
+	if (count > numberOfBytes)
+		count = numberOfBytes;
 	while (count--)
 	{
 		*(BYTE*)dest = *(BYTE*)src;

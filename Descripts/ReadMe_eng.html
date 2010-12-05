@@ -52,14 +52,14 @@
 
 <h1>Total Commander Edit Redirector</h1>
 <p>
-<b>Version 1.1.0.0</b>
+<b>Version 1.2.0.0</b>
 </p>
 <p>
 Addon for Total Commander that allows to edit files in different editors depending on the extensions.
 </p>
 
 <table border="0" cellpadding="0" cellspacing="2">
-  <tr><td><b>Author:</b></td><td style="width: 0.3em;"></td><td>Konstantin Vlasov, 2010</td></tr>
+  <tr><td><b>Author:</b></td><td style="width: 0.3em;"></td><td>Konstantin Vlasov, 2011</td></tr>
   <tr><td><b>Homepage:</b></td><td style="width: 0.3em;"></td><td><a href="http://flint-inc.ru/eng/info/tcer.html" target="_blank">http://flint-inc.ru/</a></td></tr>
   <tr><td><b>E-mail:</b></td><td style="width: 0.3em;"></td><td><a href="mailto:support@flint_inc.ru?Subject=TCER">support@flint_inc.ru</a></td></tr>
 </table>
@@ -72,7 +72,7 @@ Distributed under <a href="Artistic%20License%202.0.html">Artistic License 2.0</
 <b>System requirements:</b><br />
 Processor with SSE2 (Intel Pentium 4, AMD Athlon 64 and higher)<br />
 Windows 2000 and higher<br />
-Total Commander 7.50&ndash;7.55a
+Total Commander 7.50&ndash;7.56a
 </p>
 
 
@@ -217,13 +217,20 @@ After that open the Configuration dialog in TC, select the page "Edit/View" and 
 
 <a name="history"></a><h2>Version history</h2>
 
+<h3>Version 1.2.0.0 (30.01.2011):</h3>
+<ol type="1">
+  <li>Fixed: Message boxes did not display in some cases.</li>
+  <li>Fixed: Crash when opening more than 32 files.</li>
+  <li>Fixed: Potential hang after program termination.</li>
+</ol>
+
 <h3>Version 1.1.0.0 (2.11.2010):</h3>
 <ol type="1">
   <li>Added separate version without SSE optimizations (for old processors).</li>
   <li>Significantly reduced EXE file size.</li>
   <li>Fixed: Full view mode was supported only when file sizes did not contain units.</li>
   <li>Fixed: When opening packed file in an MDI editor, TCER does not wait anymore for the process to terminate (reason: one can open within the same editor another file and close the first file, and such closing would not be detected in TC).</li>
-  <li>Fixed: The program only started on WinXP SP3 and higher.</li>
+  <li>Fixed: The program only started on WinXP SP2 and higher.</li>
   <li>Fixed minor typos.</li>
 </ol>
 
