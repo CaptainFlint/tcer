@@ -6,6 +6,10 @@
 #include "WindowFinder.h"
 #include <commctrl.h>
 
+// Path to system directory
+WCHAR DllPath[MAX_PATH];
+size_t DllPathLen;
+
 // Strips the Full View data: size, date, time, attributes
 void strip_file_data(WCHAR* elem)
 {
@@ -43,6 +47,51 @@ void strip_file_data(WCHAR* elem)
 	}
 	elem[len - 1] = L'\0';
 }
+
+
+typedef void (WINAPI *tGetNativeSystemInfo)(LPSYSTEM_INFO lpSystemInfo);
+typedef BOOL (WINAPI *tIsWow64Process)(HANDLE hProcess, PBOOL Wow64Process);
+
+enum BITNESS
+{
+	PROCESS_X32 = 0,
+	PROCESS_X64 = 1
+};
+
+// Checks whether process is 32- or 64-bit
+BITNESS GetProcessBitness(DWORD pid)
+{
+	BITNESS res = PROCESS_X32;
+
+	// Protection from loading DLL from current path
+	wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"kernel32.dll");
+	HMODULE kernel32 = LoadLibrary(DllPath);
+
+	if (kernel32 == NULL)
+		return res;
+	tGetNativeSystemInfo fGetNativeSystemInfo = (tGetNativeSystemInfo)GetProcAddress(kernel32, "GetNativeSystemInfo");
+	tIsWow64Process fIsWow64Process = (tIsWow64Process)GetProcAddress(kernel32, "IsWow64Process");
+	if ((fGetNativeSystemInfo != NULL) && (fIsWow64Process != NULL))
+	{
+		SYSTEM_INFO si;
+		fGetNativeSystemInfo(&si);
+		if (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
+		{
+			HANDLE pHandle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pid);
+			if (pHandle != NULL)
+			{
+				BOOL is64;
+				// IsWow64Process returns FALSE for 64-bit process on 64-bit system
+				if (fIsWow64Process(pHandle, &is64) && !is64)
+					res = PROCESS_X64;
+				CloseHandle(pHandle);
+			}
+		}
+	}
+	FreeLibrary(kernel32);
+	return res;
+}
+
 
 HANDLE ProcessHeap;
 
@@ -86,6 +135,20 @@ int wWinMainCRTStartup()
 		MessageBox(NULL, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
+
+	DllPathLen = GetSystemDirectory(DllPath, MAX_PATH);
+	if (DllPathLen == 0)
+	{
+		swprintf_s(msg_buf, BUF_SZ, L"Failed to get system directory (", GetLastError(), L")");
+		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+		ExitProcess(1);
+	}
+	else if (DllPathLen > MAX_PATH - 13)
+	{
+		MessageBox(NULL, L"Too long path to system directory!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+		ExitProcess(1);
+	}
+	DllPath[DllPathLen++] = L'\\';
 
 	HWND tc_main_wnd = NULL;
 
@@ -131,7 +194,9 @@ int wWinMainCRTStartup()
 	// 1. Find window of the TC instance which initiated this TCER process.
 
 	// Obtain address of NtQueryInformationProcess needed for getting PPID
-	HMODULE ntdll = LoadLibrary(L"ntdll.dll");
+	// Protection from loading DLL from current path
+	wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"ntdll.dll");
+	HMODULE ntdll = LoadLibrary(DllPath);
 	if (ntdll == NULL)
 	{
 		swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (", GetLastError(), L")");
@@ -158,6 +223,13 @@ int wWinMainCRTStartup()
 	}
 	FreeLibrary(ntdll);
 
+	BITNESS BitnessTC = GetProcessBitness((DWORD)proc_info.InheritedFromUniqueProcessId);
+
+	// Window class names for 32- and 64-bit TC controls
+	const WCHAR* ListBoxClass[2] = { L"TMyListBox",  L"LCLListBox"  };
+	const WCHAR* PanelClass[2]   = { L"TMyPanel",    L"Window"      };
+	const WCHAR* CmdLineClass[2] = { L"TMyComboBox", L"LCLComboBox" };
+
 	//////////////////////////////////////////////////////////////////////////
 	// 2. Find the active file panel handle.
 
@@ -175,7 +247,7 @@ int wWinMainCRTStartup()
 	}
 
 	// Find TC file panels
-	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, L"TMyListBox", 0);
+	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, ListBoxClass[BitnessTC], 0);
 	if (tc_panels->GetLength() == 0)
 	{
 		MessageBox(tc_main_wnd, L"Could not find panels in the TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
@@ -234,7 +306,7 @@ int wWinMainCRTStartup()
 	}
 	tc_curpath_cmdline[0] = L'\0';
 	size_t tc_curpath_cmdline_len = 0;
-	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, L"TMyPanel", 0);
+	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, PanelClass[BitnessTC], 0);
 	if (tc_panels->GetLength() == 0)
 	{
 		MessageBox(tc_main_wnd, L"Failed to find TC command line!", MsgBoxTitle, MB_ICONERROR | MB_OK);
@@ -242,13 +314,10 @@ int wWinMainCRTStartup()
 	}
 	for (i = 0; i < tc_panels->GetLength(); ++i)
 	{
-		if (WindowFinder::FindWnd((*tc_panels)[i], true, L"TMyTabControl", 0) != NULL)
+		if (WindowFinder::FindWnd((*tc_panels)[i], true, CmdLineClass[BitnessTC], 0) == NULL)
 			continue;
 
-		if (WindowFinder::FindWnd((*tc_panels)[i], true, L"THeaderClick", 0) != NULL)
-			continue;
-
-		HWND tc_cmdline = WindowFinder::FindWnd((*tc_panels)[i], true, L"TMyPanel", 0);
+		HWND tc_cmdline = WindowFinder::FindWnd((*tc_panels)[i], true, PanelClass[BitnessTC], 0);
 		if (tc_cmdline == NULL)
 			continue;
 
