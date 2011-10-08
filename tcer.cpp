@@ -693,20 +693,37 @@ int wWinMainCRTStartup()
 	}
 
 	// c. Check for Shift+F4.
-	// Heuristic algorithm: ftLastAccessTime == ftLastWriteTime, and both are almost current time.
+	/*
+		Using timestamp values of the input file.
+		Timestamp resolutions for different file systems:
+		NTFS:
+			CreationTime   - 100 nanoseconds
+			LastWriteTime  - 100 nanoseconds
+			LastAccessTime - 100 nanoseconds
+			(LastAccessTime is updated at a 60 minute granularity; in Vista/Server08 updates to LastAccessTime
+			are disabled by default and are updated only when the file is closed.)
+		FAT:
+			CreationTime   - 10 milliseconds
+			LastWriteTime  - 2 seconds
+			LastAccessTime - 1 day
+		exFAT:
+			CreationTime   - 10 milliseconds
+			LastWriteTime  - 10 milliseconds
+			LastAccessTime - 2 seconds
+		
+		So, check whether CreationTime is close enough to the current system time.
+	*/
 	if (edit_paths->GetLength() == 0)
 	{
 		WIN32_FILE_ATTRIBUTE_DATA file_info;
-		if (GetFileAttributesEx(input_file, GetFileExInfoStandard, &file_info) &&
-			(file_info.ftLastAccessTime.dwHighDateTime == file_info.ftLastWriteTime.dwHighDateTime) &&
-			(file_info.ftLastAccessTime.dwLowDateTime == file_info.ftLastWriteTime.dwLowDateTime))
+		if (GetFileAttributesEx(input_file, GetFileExInfoStandard, &file_info))
 		{
 			FILETIME local_time;
 			GetSystemTimeAsFileTime(&local_time);
 			ULARGE_INTEGER file_time64;
 			ULARGE_INTEGER local_time64;
-			file_time64.HighPart = file_info.ftLastWriteTime.dwHighDateTime;
-			file_time64.LowPart = file_info.ftLastWriteTime.dwLowDateTime;
+			file_time64.HighPart = file_info.ftCreationTime.dwHighDateTime;
+			file_time64.LowPart = file_info.ftCreationTime.dwLowDateTime;
 			local_time64.HighPart = local_time.dwHighDateTime;
 			local_time64.LowPart = local_time.dwLowDateTime;
 			// Consider the file just created if it is older than MaxShiftF4MSeconds milliseconds
@@ -1018,7 +1035,6 @@ int wWinMainCRTStartup()
 	// TODO: [5:LOW] Support virtual folders
 	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
 	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
-	// TODO: [0:BLOCKER] Shift+F4 is not detected on exFAT! (check for FAT too)
 
 	ExitProcess(0);
 }

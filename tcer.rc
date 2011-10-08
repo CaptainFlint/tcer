@@ -32,8 +32,8 @@ LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 1,2,0,0
- PRODUCTVERSION 1,2,0,0
+ FILEVERSION 1,3,0,0
+ PRODUCTVERSION 1,3,0,0
  FILEFLAGSMASK VS_FF_DEBUG | VS_FF_PATCHED | VS_FF_PRERELEASE | VS_FF_INFOINFERRED
 #ifdef _DEBUG
  FILEFLAGS VS_FF_DEBUG
@@ -50,12 +50,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "CaptainFlint Software"
             VALUE "FileDescription", "Total Commander Edit Redirector"
-            VALUE "FileVersion", "1.2.0.0"
+            VALUE "FileVersion", "1.3.0.0"
             VALUE "InternalName", "tcer"
             VALUE "LegalCopyright", "Copyright © 2011 CaptainFlint Software"
             VALUE "OriginalFilename", "tcer.exe"
             VALUE "ProductName", "TC Edit Redirector"
-            VALUE "ProductVersion", "1.2.0.0"
+            VALUE "ProductVersion", "1.3.0.0"
         END
     END
     BLOCK "VarFileInfo"
