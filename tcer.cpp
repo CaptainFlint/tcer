@@ -912,27 +912,70 @@ int wWinMainCRTStartup()
 		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
+	// Extract the active file extension
 	path_len = wcslen(edit_path);
 	idx_slash = wcsrchr_pos(edit_path, path_len, L'\\');
 	idx_dot = wcsrchr_pos(edit_path, path_len, L'.');
+	size_t file_ext_len;
 	if ((idx_dot == 0) || ((idx_slash != 0) && (idx_dot < idx_slash)))
 	{
 		// Extension not found
-		wcscpylen_s(file_ext, BUF_SZ, L"<nil>");
+		file_ext_len = wcscpylen_s(file_ext, BUF_SZ, L"<nil>");
 	}
 	else
 	{
 		// Extension found
-		wcscpylen_s(file_ext, BUF_SZ, edit_path + idx_dot);
+		file_ext_len = wcscpylen_s(file_ext, BUF_SZ, edit_path + idx_dot);
 	}
 
 	// Get section name that describes the editor to use
-	wcscpylen_s(ini_section, BUF_SZ, L"Program_");
-	if (GetPrivateProfileString(L"Extensions", file_ext, NULL, ini_section + 8, BUF_SZ - 8, ini_path) == 0)
+	WCHAR* all_exts = new WCHAR[32767];
+	if (GetPrivateProfileSection(L"Extensions", all_exts, 32767, ini_path) == 0)
 	{
-		// No editor specified, use DefaultProgram
+		// No extensions specified, use DefaultProgram
 		wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
 	}
+	else
+	{
+		WCHAR* exts_block = all_exts;
+		bool found = false;
+		// INI section lines are 0-byte-delimited, and the whole section ends with two 0-bytes
+		while (*exts_block != L'\0')
+		{
+			WCHAR* pos = exts_block;
+			// Checking the list of extensions in the current line...
+			while (*pos != L'=')
+			{
+				if ((_wcsnicmp(pos, file_ext, file_ext_len) == 0) && ((pos[file_ext_len] == L',') || (pos[file_ext_len] == L'=')))
+				{
+					// Found the correct extension => store the application name and exit the loop
+					found = true;
+					pos += wcscspn(pos, L"=") + 1;
+					wcscpylen_s(ini_section, BUF_SZ, L"Program_");
+					wcscpylen_s(ini_section + 8, BUF_SZ - 8, pos);
+					break;
+				}
+				// Go to the next extension
+				pos += wcscspn(pos, L",=");
+				if (*pos == L',')
+					++pos;
+			}
+			if (found)
+				break;
+			else
+			{
+				// Go to the next line
+				pos += wcscspn(pos, L"") + 1;
+				exts_block = pos;
+			}
+		}
+		if (!found)
+		{
+			// No editor specified, use DefaultProgram
+			wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
+		}
+	}
+	delete[] all_exts;
 	delete[] file_ext;
 
 	// Read the editor settings
