@@ -30,20 +30,50 @@ void strip_file_data(WCHAR* elem)
 	}
 	// Full view mode
 	size_t len = wcslen(elem);
-	for (int i = 0; i < 4; ++i)
+	// Try to determine GetTextMode scheme
+	size_t delim_pos = wcscspn(elem, L"\t\x0d");
+	if (elem[delim_pos] == L'\0')
 	{
-		// Columns are space-delimited (size, date, time, attributes)
-		len = wcsrchr_pos(elem, len - 1, L' ');
-		if (len == 0)
-			return;
+		// No special delimiters found => probably GetTextMode=0: columns are space-delimited (name size date time attributes)
+		for (int i = 0; i < 4; ++i)
+		{
+			len = wcsrchr_pos(elem, len - 1, L' ');
+			if (len == 0)
+				return;
+		}
+		if ((elem[len] < L'0') || (elem[len] > L'9'))
+		{
+			// The Size value does not start with digit => it contains unit name delimited by space from the value,
+			// and only the unit was stripped, so now strip the value
+			len = wcsrchr_pos(elem, len - 1, L' ');
+			if (len == 0)
+				return;
+		}
 	}
-	if ((elem[len] < L'0') || (elem[len] > L'9'))
+	else
 	{
-		// The Size column contains unit name delimited by space from the value,
-		// the unit only was stripped, now strip the value
-		len = wcsrchr_pos(elem, len - 1, L' ');
-		if (len == 0)
-			return;
+		if (elem[delim_pos] == L'\t')
+		{
+			// Check if this is GetTextMode=4 or 5
+			size_t delim_pos2 = wcscspn(elem, L"\x0d");
+			if (elem[delim_pos2] == L'\x0d')
+			{
+				// It is (Name:\t{name}<CR>Size:\t{size}<CR>Date:\t{date+time}<CR>Attrs:\t{attributes}, or same with <CR><LF>).
+				// Move the file name (substring between the first \t and \r chars) to the beginning of the text.
+				memcpy_s(elem, len + 1, elem + delim_pos + 1, (delim_pos2 - delim_pos) * sizeof(WCHAR));
+				len = delim_pos2 - delim_pos;
+			}
+			else
+				// No, it's GetTextMode=1: columns are tab-delimited (name<TAB>size<TAB>date+time<TAB>attributes) => just cut by the first tab
+				len = delim_pos + 1;
+		}
+		else if (elem[delim_pos] == L'\x0d')
+		{
+			// GetTextMode=2: columns are \r-delimited (name<CR>size<CR>date+time<CR>attributes)
+			// GetTextMode=3: columns are \r\n-delimited (name<CR><LF>size<CR><LF>date time<CR><LF>attributes)
+			// In both cases \r is the the first non-filename character
+			len = delim_pos + 1;
+		}
 	}
 	elem[len - 1] = L'\0';
 }
@@ -1070,7 +1100,6 @@ int wWinMainCRTStartup()
 	// TODO: [5:LOW] Support virtual folders
 	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
 	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
-	// TODO: [1:HIGH] Support different modes of GetTextMode in wincmd.ini
 
 	ExitProcess(0);
 }
