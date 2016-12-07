@@ -165,7 +165,7 @@ int wWinMainCRTStartup()
 		So the very first thing we do is getting all the information we need from
 		TC window and its child windows/panels.
 
-		Algorythm:
+		Algorithm:
 		1. Find window of the TC instance which initiated this TCER process:
 		  a) get parent PID;
 		  b) find TTOTAL_CMD window that belongs to the PID.
@@ -233,6 +233,7 @@ int wWinMainCRTStartup()
 	//////////////////////////////////////////////////////////////////////////
 	// 2. Find the active file panel handle.
 
+	bool parent_find_files = false;
 	// Find the main window of the TC instance found
 #ifdef _DEBUG
 	// DBG: When debugging, the debugger is parent; skip the PPID check
@@ -242,242 +243,263 @@ int wWinMainCRTStartup()
 #endif
 	if (tc_main_wnd == NULL)
 	{
-		MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-
-	// Find TC file panels
-	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, ListBoxClass[BitnessTC], 0);
-	if (tc_panels->GetLength() == 0)
-	{
-		MessageBox(tc_main_wnd, L"Could not find panels in the TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-
-	// Determine the focused panel
-	HWND tc_panel = NULL;
-	GUITHREADINFO gti;
-	gti.cbSize = sizeof(gti);
-	SetForegroundWindow(tc_main_wnd);
-	DWORD tid = GetWindowThreadProcessId(tc_main_wnd, NULL);
-#ifdef _DEBUG
-	// DBG: Wait, so that application windows had time to switch and set focus
-	Sleep(500);
-#endif
-	if (!GetGUIThreadInfo(tid, &gti))
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	if (gti.hwndFocus == NULL)
-	{
-		MessageBox(tc_main_wnd, L"Failed to determine active panel!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	for (i = 0; i < tc_panels->GetLength(); ++i)
-	{
-		if ((*tc_panels)[i] == gti.hwndFocus)
+		// Maybe started from the Find Files dialog?
+		tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TFindFile", proc_info.InheritedFromUniqueProcessId);
+		if (tc_main_wnd == NULL)
 		{
-			tc_panel = gti.hwndFocus;
-			break;
+			MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
 		}
-	}
-	delete tc_panels;
-	if (tc_panel == NULL)
-	{
-		MessageBox(tc_main_wnd, L"No TC panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	if (GetWindowTextLength(tc_panel) != 0)
-	{
-		MessageBox(tc_main_wnd, L"No TC file panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
+		parent_find_files = true;
 	}
 
-	//////////////////////////////////////////////////////////////////////////
-	// 3. Get current path from TC command line.
-
-	WCHAR* tc_curpath_cmdline = new WCHAR[BUF_SZ];
-	if (tc_curpath_cmdline == NULL)
-	{
-		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	tc_curpath_cmdline[0] = L'\0';
+	// Various variables calculated when TCER is started from the main TC window:
+	// Current path from TC command line
+	WCHAR* tc_curpath_cmdline = NULL;
 	size_t tc_curpath_cmdline_len = 0;
-	tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, PanelClass[BitnessTC], 0);
-	if (tc_panels->GetLength() == 0)
-	{
-		MessageBox(tc_main_wnd, L"Failed to find TC command line!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	for (i = 0; i < tc_panels->GetLength(); ++i)
-	{
-		if (WindowFinder::FindWnd((*tc_panels)[i], true, CmdLineClass[BitnessTC], 0) == NULL)
-			continue;
+	// List of selected items in the TC file panel
+	ArrayPtr<WCHAR>* sel_items_txt = NULL;
+	size_t sel_items_num = 0;
+	// Focused item in the TC file panel
+	WCHAR* focus_item_txt = NULL;
+	// Item to be used for selecting the appropriate editor
+	size_t active_item = 0;
 
-		HWND tc_cmdline = WindowFinder::FindWnd((*tc_panels)[i], true, PanelClass[BitnessTC], 0);
-		if (tc_cmdline == NULL)
-			continue;
-
-		tc_curpath_cmdline_len = GetWindowText(tc_cmdline, tc_curpath_cmdline, BUF_SZ);
-		if (tc_curpath_cmdline_len + 1 >= BUF_SZ)
+	// Work with TC file panel - only if started from the main TC window
+	if (!parent_find_files)
+	{
+		// Find TC file panels
+		tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, ListBoxClass[BitnessTC], 0);
+		if (tc_panels->GetLength() == 0)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
+			MessageBox(tc_main_wnd, L"Could not find panels in the TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+
+		// Determine the focused panel
+		HWND tc_panel = NULL;
+		GUITHREADINFO gti;
+		gti.cbSize = sizeof(gti);
+		SetForegroundWindow(tc_main_wnd);
+		DWORD tid = GetWindowThreadProcessId(tc_main_wnd, NULL);
+#ifdef _DEBUG
+		// DBG: Wait, so that application windows had time to switch and set focus
+		Sleep(500);
+#endif
+		if (!GetGUIThreadInfo(tid, &gti))
+		{
+			swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		if (tc_curpath_cmdline_len > 0)
-			tc_curpath_cmdline[tc_curpath_cmdline_len - 1] = L'\\';
-		break;
-	}
-	delete tc_panels;
+		if (gti.hwndFocus == NULL)
+		{
+			MessageBox(tc_main_wnd, L"Failed to determine active panel!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		for (i = 0; i < tc_panels->GetLength(); ++i)
+		{
+			if ((*tc_panels)[i] == gti.hwndFocus)
+			{
+				tc_panel = gti.hwndFocus;
+				break;
+			}
+		}
+		delete tc_panels;
+		if (tc_panel == NULL)
+		{
+			MessageBox(tc_main_wnd, L"No TC panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		if (GetWindowTextLength(tc_panel) != 0)
+		{
+			MessageBox(tc_main_wnd, L"No TC file panel is focused!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
 
-	//////////////////////////////////////////////////////////////////////////
-	// 4. Get active panel title.
+		//////////////////////////////////////////////////////////////////////////
+		// 3. Get current path from TC command line.
 
-	/* Code reserved for future use!
-
-	// Find the two TPathPanel's that are children of the main window
-	tc_panels = WindowFinder::FindWnds(tc_main_wnd, false, L"TPathPanel", 0);
-	if (tc_panels->GetLength() != 2)
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-
-	// Get the coordinates of the active panel and path panels
-	RECT tc_panel_rect, path_panel1_rect, path_panel2_rect;
-	if (GetWindowRect(tc_panel, &tc_panel_rect) == 0)
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	if ((GetWindowRect((*tc_panels)[0], &path_panel1_rect) == 0)
-		||
-		(GetWindowRect((*tc_panels)[1], &path_panel2_rect) == 0))
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-
-	// Find the active path panel
-	HWND tc_path_panel;
-	if (path_panel1_rect.left == path_panel2_rect.left)
-	{
-		// Vertical panels placement
-		if (abs(tc_panel_rect.top - path_panel1_rect.top) < abs(tc_panel_rect.top - path_panel2_rect.top))
-			tc_path_panel = (*tc_panels)[0];
-		else
-			tc_path_panel = (*tc_panels)[1];
-	}
-	else
-	{
-		// Horizontal panels placement
-		if (abs(tc_panel_rect.left - path_panel1_rect.left) < abs(tc_panel_rect.left - path_panel2_rect.left))
-			tc_path_panel = (*tc_panels)[0];
-		else
-			tc_path_panel = (*tc_panels)[1];
-	}
-	delete tc_panels;
-
-	WCHAR* tc_curpath_panel = new WCHAR[BUF_SZ];
-	if (tc_curpath_panel == NULL)
-	{
-		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	size_t tc_curpath_panel_len = GetWindowText(tc_path_panel, tc_curpath_panel, BUF_SZ);
-	if (tc_curpath_panel_len + 1 >= BUF_SZ)
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	delete[] tc_curpath_panel;
-	*/
-
-	//////////////////////////////////////////////////////////////////////////
-	// 5. Fetch the list of items to edit.
-
-	// Active item: the one to be used for choosing the editor.
-	// If focused item is selected it will be used, the first file otherwise.
-	size_t active_item = 0;
-
-	// Get the focused item
-	UINT focus_item_idx = (UINT)SendMessage(tc_panel, LB_GETCARETINDEX, 0, 0);
-
-	// Get the number of selected elements and their indices
-	size_t sel_items_num = SendMessage(tc_panel, LB_GETSELCOUNT, 0, 0);
-	UINT* sel_items_idx = NULL;
-	if (sel_items_num > 0)
-	{
-		sel_items_idx = new UINT[sel_items_num];
-		if (sel_items_idx == NULL)
+		tc_curpath_cmdline = new WCHAR[BUF_SZ];
+		if (tc_curpath_cmdline == NULL)
 		{
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		size_t sel_items_num2 = SendMessage(tc_panel, LB_GETSELITEMS, sel_items_num, (LPARAM)sel_items_idx);
-		if (sel_items_num2 < sel_items_num)
-			sel_items_num = sel_items_num2;
-	}
-
-	// Get the elements themselves
-	size_t invalid_paths = 0;
-
-	WCHAR* focus_item_txt = NULL;
-	size_t elem_len = SendMessage(tc_panel, LB_GETTEXTLEN, focus_item_idx, NULL);
-	if ((elem_len != LB_ERR) && (elem_len > 0) && (elem_len + 1 < BUF_SZ))
-	{
-		focus_item_txt = new WCHAR[elem_len + 1];
-		if (focus_item_txt == NULL)
+		tc_curpath_cmdline[0] = L'\0';
+		tc_curpath_cmdline_len = 0;
+		tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, PanelClass[BitnessTC], 0);
+		if (tc_panels->GetLength() == 0)
 		{
-			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			MessageBox(tc_main_wnd, L"Failed to find TC command line!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		if (SendMessage(tc_panel, LB_GETTEXT, focus_item_idx, (LPARAM)focus_item_txt) == 0)
+		for (i = 0; i < tc_panels->GetLength(); ++i)
 		{
-			delete[] focus_item_txt;
-			focus_item_txt = NULL;
-		}
-	}
+			if (WindowFinder::FindWnd((*tc_panels)[i], true, CmdLineClass[BitnessTC], 0) == NULL)
+				continue;
 
-	ArrayPtr<WCHAR>* sel_items_txt = new ArrayPtr<WCHAR>(sel_items_num);
-	if (sel_items_txt == NULL)
-	{
-		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	for (i = 0; i < sel_items_num; ++i)
-	{
-		elem_len = SendMessage(tc_panel, LB_GETTEXTLEN, sel_items_idx[i], NULL);
-		if ((elem_len == LB_ERR) || (elem_len + 1 >= BUF_SZ))
-		{
-			++invalid_paths;
-			continue;
+			HWND tc_cmdline = WindowFinder::FindWnd((*tc_panels)[i], true, PanelClass[BitnessTC], 0);
+			if (tc_cmdline == NULL)
+				continue;
+
+			tc_curpath_cmdline_len = GetWindowText(tc_cmdline, tc_curpath_cmdline, BUF_SZ);
+			if (tc_curpath_cmdline_len + 1 >= BUF_SZ)
+			{
+				swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
+				MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+				ExitProcess(1);
+			}
+			if (tc_curpath_cmdline_len > 0)
+				tc_curpath_cmdline[tc_curpath_cmdline_len - 1] = L'\\';
+			break;
 		}
-		WCHAR* tmp = new WCHAR[elem_len + 1];
-		if (tmp == NULL)
+		delete tc_panels;
+
+		//////////////////////////////////////////////////////////////////////////
+		// 4. Get active panel title.
+
+		/* Code reserved for future use!
+
+		// Find the two TPathPanel's that are children of the main window
+		tc_panels = WindowFinder::FindWnds(tc_main_wnd, false, L"TPathPanel", 0);
+		if (tc_panels->GetLength() != 2)
 		{
-			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
+			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		if (SendMessage(tc_panel, LB_GETTEXT, sel_items_idx[i], (LPARAM)tmp) == 0)
-			delete[] tmp;
+
+		// Get the coordinates of the active panel and path panels
+		RECT tc_panel_rect, path_panel1_rect, path_panel2_rect;
+		if (GetWindowRect(tc_panel, &tc_panel_rect) == 0)
+		{
+			swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
+			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		if ((GetWindowRect((*tc_panels)[0], &path_panel1_rect) == 0)
+			||
+			(GetWindowRect((*tc_panels)[1], &path_panel2_rect) == 0))
+		{
+			swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
+			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+
+		// Find the active path panel
+		HWND tc_path_panel;
+		if (path_panel1_rect.left == path_panel2_rect.left)
+		{
+			// Vertical panels placement
+			if (abs(tc_panel_rect.top - path_panel1_rect.top) < abs(tc_panel_rect.top - path_panel2_rect.top))
+				tc_path_panel = (*tc_panels)[0];
+			else
+				tc_path_panel = (*tc_panels)[1];
+		}
 		else
 		{
-			sel_items_txt->Append(tmp);
-			if (focus_item_idx == sel_items_idx[i])
-				active_item = sel_items_txt->GetLength() - 1;   // Remember the active item index
+			// Horizontal panels placement
+			if (abs(tc_panel_rect.left - path_panel1_rect.left) < abs(tc_panel_rect.left - path_panel2_rect.left))
+				tc_path_panel = (*tc_panels)[0];
+			else
+				tc_path_panel = (*tc_panels)[1];
 		}
+		delete tc_panels;
+
+		WCHAR* tc_curpath_panel = new WCHAR[BUF_SZ];
+		if (tc_curpath_panel == NULL)
+		{
+			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		size_t tc_curpath_panel_len = GetWindowText(tc_path_panel, tc_curpath_panel, BUF_SZ);
+		if (tc_curpath_panel_len + 1 >= BUF_SZ)
+		{
+			swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
+			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		delete[] tc_curpath_panel;
+		*/
+
+		//////////////////////////////////////////////////////////////////////////
+		// 5. Fetch the list of items to edit.
+
+		// Active item: the one to be used for choosing the editor.
+		// If focused item is selected it will be used, the first file otherwise.
+		active_item = 0;
+
+		// Get the focused item
+		UINT focus_item_idx = (UINT)SendMessage(tc_panel, LB_GETCARETINDEX, 0, 0);
+
+		// Get the number of selected elements and their indices
+		sel_items_num = SendMessage(tc_panel, LB_GETSELCOUNT, 0, 0);
+		UINT* sel_items_idx = NULL;
+		if (sel_items_num > 0)
+		{
+			sel_items_idx = new UINT[sel_items_num];
+			if (sel_items_idx == NULL)
+			{
+				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+				ExitProcess(1);
+			}
+			size_t sel_items_num2 = SendMessage(tc_panel, LB_GETSELITEMS, sel_items_num, (LPARAM)sel_items_idx);
+			if (sel_items_num2 < sel_items_num)
+				sel_items_num = sel_items_num2;
+		}
+
+		// Get the elements themselves
+		size_t invalid_paths = 0;
+
+		size_t elem_len = SendMessage(tc_panel, LB_GETTEXTLEN, focus_item_idx, NULL);
+		if ((elem_len != LB_ERR) && (elem_len > 0) && (elem_len + 1 < BUF_SZ))
+		{
+			focus_item_txt = new WCHAR[elem_len + 1];
+			if (focus_item_txt == NULL)
+			{
+				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+				ExitProcess(1);
+			}
+			if (SendMessage(tc_panel, LB_GETTEXT, focus_item_idx, (LPARAM)focus_item_txt) == 0)
+			{
+				delete[] focus_item_txt;
+				focus_item_txt = NULL;
+			}
+		}
+
+		sel_items_txt = new ArrayPtr<WCHAR>(sel_items_num);
+		if (sel_items_txt == NULL)
+		{
+			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		for (i = 0; i < sel_items_num; ++i)
+		{
+			elem_len = SendMessage(tc_panel, LB_GETTEXTLEN, sel_items_idx[i], NULL);
+			if ((elem_len == LB_ERR) || (elem_len + 1 >= BUF_SZ))
+			{
+				++invalid_paths;
+				continue;
+			}
+			WCHAR* tmp = new WCHAR[elem_len + 1];
+			if (tmp == NULL)
+			{
+				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+				ExitProcess(1);
+			}
+			if (SendMessage(tc_panel, LB_GETTEXT, sel_items_idx[i], (LPARAM)tmp) == 0)
+				delete[] tmp;
+			else
+			{
+				sel_items_txt->Append(tmp);
+				if (focus_item_idx == sel_items_idx[i])
+					active_item = sel_items_txt->GetLength() - 1;   // Remember the active item index
+			}
+		}
+		if (sel_items_idx != NULL)
+			delete[] sel_items_idx;
 	}
-	if (sel_items_idx != NULL)
-		delete[] sel_items_idx;
 
 
 	//////////////////////////////////////////////////////////////////////////
@@ -586,16 +608,17 @@ int wWinMainCRTStartup()
 
 	/*
 		Current implementation:
-		1) lpCmdLine =~ %TEMP%\_tc(_|)\.*
+		1) Started from Find Files -> use lpCmdLine.
+		2) lpCmdLine =~ %TEMP%\_tc(_|)\.*
 			Archive/FS-plugin/FTP/etc. -> open lpCmdLine, wait till editor close.
-		2) tc_curpath_cmdline =~ \\\.*
+		3) tc_curpath_cmdline =~ \\\.*
 			TempPanel FS-plugin -> open lpCmdLine, do not wait.
-		3) lpCmdLine was just created
+		4) lpCmdLine was just created
 			Shift+F4 -> open lpCmdLine, do not wait.
-		4) Otherwise
+		5) Otherwise
 			Combine tc_curpath_cmdline with selected elements.
-		5) If no elements selected, open the focused file.
-		6) If it fails, open the file supplied via command line.
+		6) If no elements selected, open the focused file.
+		7) If it fails, open the file supplied via command line.
 	*/
 
 #ifndef _DEBUG
@@ -650,39 +673,50 @@ int wWinMainCRTStartup()
 		}
 	}
 
-	// TODO: [3:MEDIUM] Get rid of code duplication
-	// a. Check for archive/FS-plugin/FTP/etc.
-	WCHAR* temp_dir = new WCHAR[BUF_SZ];
-	if (temp_dir == NULL)
+	// a. Check for Find Files being our parent
+	if (parent_find_files)
 	{
-		MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
+		edit_paths->Append(input_file);
+		input_file = NULL;      // Memory block now is controlled by ArrayPtr, forget about it
+		WaitForTerminate = false;
 	}
-	size_t temp_dir_len = GetTempPath(BUF_SZ, temp_dir);
-	if (temp_dir_len + 4 >= BUF_SZ)
-	{
-		swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
-		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
-		ExitProcess(1);
-	}
-	temp_dir[temp_dir_len++] = L'_';
-	temp_dir[temp_dir_len++] = L't';
-	temp_dir[temp_dir_len++] = L'c';
-	if (_wcsnicmp(input_file, temp_dir, temp_dir_len) == 0)
-	{
-		if ((input_file[temp_dir_len] == L'\\')
-			||
-			((input_file[temp_dir_len] == L'_') && (input_file[temp_dir_len + 1] == L'\\')))
-		{
-			edit_paths->Append(input_file);
-			input_file = NULL;      // Memory block now is controlled by ArrayPtr, forget about it
-			// FS-plugins do not need to wait; archives/FTP/LPT/etc. do need.
-			WaitForTerminate = (wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) != 0);
-		}
-	}
-	delete[] temp_dir;
 
-	// b. Check for TemporaryPanel FS-plugin.
+	// TODO: [3:MEDIUM] Get rid of code duplication
+	// b. Check for archive/FS-plugin/FTP/etc.
+	if (edit_paths->GetLength() == 0)
+	{
+		WCHAR* temp_dir = new WCHAR[BUF_SZ];
+		if (temp_dir == NULL)
+		{
+			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		size_t temp_dir_len = GetTempPath(BUF_SZ, temp_dir);
+		if (temp_dir_len + 4 >= BUF_SZ)
+		{
+			swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
+			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+		temp_dir[temp_dir_len++] = L'_';
+		temp_dir[temp_dir_len++] = L't';
+		temp_dir[temp_dir_len++] = L'c';
+		if (_wcsnicmp(input_file, temp_dir, temp_dir_len) == 0)
+		{
+			if ((input_file[temp_dir_len] == L'\\')
+				||
+				((input_file[temp_dir_len] == L'_') && (input_file[temp_dir_len + 1] == L'\\')))
+			{
+				edit_paths->Append(input_file);
+				input_file = NULL;      // Memory block now is controlled by ArrayPtr, forget about it
+				// FS-plugins do not need to wait; archives/FTP/LPT/etc. do need.
+				WaitForTerminate = (wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) != 0);
+			}
+		}
+		delete[] temp_dir;
+	}
+
+	// c. Check for TemporaryPanel FS-plugin.
 	if (edit_paths->GetLength() == 0)
 	{
 		if (wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) == 0)
@@ -692,6 +726,7 @@ int wWinMainCRTStartup()
 		}
 	}
 
+	// TODO: [1:HIGH] If TC panel is not autorefreshed (NoReread) the new file does not appear, and TCER opens the file under cursor instead
 	// c. Check for Shift+F4.
 	/*
 		Using timestamp values of the input file.
@@ -710,7 +745,7 @@ int wWinMainCRTStartup()
 			CreationTime   - 10 milliseconds
 			LastWriteTime  - 10 milliseconds
 			LastAccessTime - 2 seconds
-		
+
 		So, check whether CreationTime is close enough to the current system time.
 	*/
 	if (edit_paths->GetLength() == 0)
@@ -736,7 +771,7 @@ int wWinMainCRTStartup()
 		}
 	}
 
-	// d. Get files from panel
+	// e. Get files from panel
 	if (edit_paths->GetLength() == 0)
 	{
 		for (i = 0; i < sel_items_num; ++i)
@@ -1035,6 +1070,7 @@ int wWinMainCRTStartup()
 	// TODO: [5:LOW] Support virtual folders
 	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
 	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
+	// TODO: [1:HIGH] Support different modes of GetTextMode in wincmd.ini
 
 	ExitProcess(0);
 }
