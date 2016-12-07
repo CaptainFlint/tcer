@@ -52,14 +52,14 @@
 
 <h1>Total Commander Edit Redirector</h1>
 <p>
-<b>Версия 1.3.0.0</b>
+<b>Версия 1.4.0.0</b>
 </p>
 <p>
 Утилита для Total Commander, позволяющая открывать файлы на редактирование в разных редакторах, в зависимости от расширений.
 </p>
 
 <table border="0" cellpadding="0" cellspacing="2">
-  <tr><td><b>Автор:</b></td><td style="width: 0.3em;"></td><td>Власов Константин, 2011 г.</td></tr>
+  <tr><td><b>Автор:</b></td><td style="width: 0.3em;"></td><td>Власов Константин, 2016 г.</td></tr>
   <tr><td><b>Домашняя страница:</b></td><td style="width: 0.3em;"></td><td><a href="http://flint-inc.ru/rus/info/tcer.html" target="_blank">http://flint-inc.ru/</a></td></tr>
   <tr><td><b>E-mail:</b></td><td style="width: 0.3em;"></td><td><a href="mailto:support@flint_inc.ru?Subject=TCER">support@flint_inc.ru</a></td></tr>
 </table>
@@ -76,18 +76,18 @@
     <b>32-битная версия:</b><br />
     Процессор с поддержкой SSE2 (Intel Pentium 4, AMD Athlon 64 и выше)<br />
     Windows 2000 и выше<br />
-    Total Commander 7.50&ndash;8.0<br />
+    Total Commander 7.50&ndash;9.0a
   </li>
   <li>
     <b>32-битная версия без SSE:</b><br />
     Windows 2000 и выше<br />
-    Total Commander 7.50&ndash;8.0<br />
+    Total Commander 7.50&ndash;9.0a
   </li>
   <li>
     <b>64-битная версия:</b><br />
     Процессор с поддержкой 64-битных команд (Intel Pentium 4, AMD Athlon 64 и выше)<br />
     Windows XP x64 и выше<br />
-    Total Commander 7.50&ndash;8.0
+    Total Commander 7.50&ndash;9.0a
   </li>
 </ul>
 
@@ -146,9 +146,9 @@
     <td>Секция привязки расширений к программам.</td>
   </tr>
   <tr>
-    <td class="ini-key"><i>ext</i>=<i>Editor1</i></td>
+    <td class="ini-key"><i>ext1,ext2,...</i>=<i>Editor1</i></td>
     <td style="width: 1em;"></td>
-    <td><code><i>ext</i></code><span class="nobr"> &mdash;</span> расширение файла (<code>&lt;nil&gt;</code><span class="nobr"> &mdash;</span> отсутствующее); программа-редактор определяется в секции <code><b>[Program_<i>Editor1</i>]</b></code>.</td>
+    <td><code><i>ext1</i></code>, <code><i>ext2</i></code><span class="nobr"> &mdash;</span> список файловых расширений (<code>&lt;nil&gt;</code><span class="nobr"> &mdash;</span> отсутствующее); программа-редактор определяется в секции <code><b>[Program_<i>Editor1</i>]</b></code>.</td>
   </tr>
   <tr><td colspan="3" style="height: 1ex;"></td></tr>
   <tr>
@@ -231,6 +231,14 @@
 
 
 <a name="history"></a><h2>История версий</h2>
+
+<h3>Версия 1.4.0.0 (9.12.2016):</h3>
+<ol type="1">
+  <li>Добавлена возможность задавать для приложения сразу несколько расширений в одной строке.</li>
+  <li>Добавлена поддержка запуска по <code>F4</code> из диалога поиска файлов.</li>
+  <li>Реализована поддержка всех значений ключа <code>GetTextMode</code> в <code>wincmd.ini</code>.</li>
+  <li>Исправлена ошибка, из-за которой пути к файлам в корне диска выглядели как <code>c:\\file.ext</code> (некоторые программы не умеют с ними работать).</li>
+</ol>
 
 <h3>Версия 1.3.0.0 (8.10.2011):</h3>
 <ol type="1">
