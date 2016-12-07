@@ -185,6 +185,39 @@ int wWinMainCRTStartup()
 	ArrayHWND* tc_panels;
 	size_t i;
 
+#ifdef TEST
+	struct TestCase
+	{
+		const WCHAR* const tc_elem;
+		const WCHAR* const file_name;
+	};
+	TestCase test_cases[] = {
+		{ L"file.txt 3 909 06.12.2016 21:07 -a--", L"file.txt" },                                           // GetTextMode=0
+		{ L"file.txt 4 Кб 06.12.2016 21:07 -a--", L"file.txt" },                                            // GetTextMode=0, size suffix
+		{ L"file.txt\t3 909\t06.12.2016 21:07\t-a--", L"file.txt" },                                        // GetTextMode=1
+		{ L"file.txt\r3 909\r06.12.2016 21:07\r-a--", L"file.txt" },                                        // GetTextMode=2
+		{ L"file.txt\r\n3 909\r\n06.12.2016 21:07\r\n-a--", L"file.txt" },                                  // GetTextMode=3
+		{ L"Имя:\tfile.txt\rРазмер:\t3 909\rДата:\t12.11.2015 16:10\rАтрибуты:\t-a--", L"file.txt" },       // GetTextMode=4
+		{ L"Имя:\tfile.txt\r\nРазмер:\t3 909\r\nДата:\t12.11.2015 16:10\r\nАтрибуты:\t-a--", L"file.txt" }, // GetTextMode=5
+		{ L"file.txt", L"file.txt" }                                                                        // Brief mode
+	};
+	WCHAR* buf = new WCHAR[MAX_PATH];
+	for (size_t i = 0; i < sizeof(test_cases) / sizeof(test_cases[0]); ++i)
+	{
+		wcscpy_s(buf, MAX_PATH, test_cases[i].tc_elem);
+		strip_file_data(buf);
+		if (wcscmp(buf, test_cases[i].file_name) != 0)
+		{
+			swprintf_s(msg_buf, MAX_PATH, L"Test %d failed!\n\nOriginal line:\n%s\n\nExtected file name:\n%s\n\nReceived file name:\n%s", i, test_cases[i].tc_elem, test_cases[i].file_name, buf);
+			MessageBox(NULL, msg_buf, L"Test Error", MB_ICONERROR | MB_OK);
+			ExitProcess(1);
+		}
+	}
+	MessageBox(NULL, L"All tests passed!", L"Test Success", MB_ICONINFORMATION | MB_OK);
+	delete[] buf;
+	ExitProcess(0);
+#endif
+
 	//////////////////////////////////////////////////////////////////////////
 	// Get the list of selected items from TC file panel                    //
 	//////////////////////////////////////////////////////////////////////////
