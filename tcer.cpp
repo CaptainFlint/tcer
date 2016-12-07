@@ -381,7 +381,18 @@ int wWinMainCRTStartup()
 				ExitProcess(1);
 			}
 			if (tc_curpath_cmdline_len > 0)
-				tc_curpath_cmdline[tc_curpath_cmdline_len - 1] = L'\\';
+			{
+				if ((tc_curpath_cmdline_len >= 2) && (tc_curpath_cmdline[tc_curpath_cmdline_len - 2] == L'\\'))
+				{
+					// The path ends with backslash (probably disk root) => just remove the angle bracket
+					tc_curpath_cmdline[--tc_curpath_cmdline_len] = L'\0';
+				}
+				else
+				{
+					// Path without trailing backslash => replace the angle bracket with backslash
+					tc_curpath_cmdline[tc_curpath_cmdline_len - 1] = L'\\';
+				}
+			}
 			break;
 		}
 		delete tc_panels;
@@ -1098,8 +1109,9 @@ int wWinMainCRTStartup()
 	// TODO: [9:IDLE] Detect tree mode
 	// TODO: [9:IDLE] Accept lists of extensions in INI, not only single items
 	// TODO: [5:LOW] Support virtual folders
-	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks
+	// TODO: [5:LOW] Allow associations not only by extension, but also by file masks + prioritize them by order
 	// TODO: [3:MEDIUM] Reuse dynamic memory instead of delete/new
+	// TODO: [5:LOW] Support opening files from one bunch in different editors
 
 	ExitProcess(0);
 }
