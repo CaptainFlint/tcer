@@ -263,24 +263,28 @@ int wWinMainCRTStartup()
 	//////////////////////////////////////////////////////////////////////////
 	// 2. Find the active file panel handle.
 
-	bool parent_find_files = false;
-	// Find the main window of the TC instance found
 #ifdef _DEBUG
-	// DBG: When debugging, the debugger is parent; skip the PPID check
-	tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", 0);
-#else
-	tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", proc_info.InheritedFromUniqueProcessId);
+	// DBG: When debugging, the debugger is parent; skip the PPID checks
+	proc_info.InheritedFromUniqueProcessId = 0;
 #endif
-	if (tc_main_wnd == NULL)
+
+	// First, check if we are started from the Find Files dialog
+	bool parent_find_files = false;
+	tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TFindFile", proc_info.InheritedFromUniqueProcessId);
+	if (tc_main_wnd != NULL)
 	{
-		// Maybe started from the Find Files dialog?
-		tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TFindFile", proc_info.InheritedFromUniqueProcessId);
+		// Yes - remember this important fact
+		parent_find_files = true;
+	}
+	else
+	{
+		// No - find the main window of the TC instance
+		tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", proc_info.InheritedFromUniqueProcessId);
 		if (tc_main_wnd == NULL)
 		{
 			MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		parent_find_files = true;
 	}
 
 	// Various variables calculated when TCER is started from the main TC window:
