@@ -29,7 +29,7 @@ BOOL CALLBACK WindowFinder::EnumWindowProc(HWND hwnd, LPARAM lparam)
 		WCHAR class_name[CLASS_BUF_SZ];
 		if (GetClassName(hwnd, class_name, CLASS_BUF_SZ) == 0)
 			return TRUE;
-		if (wcsncmp(class_name, data->wnd_class, CLASS_BUF_SZ) != 0)
+		if (cf_wcsncmp(class_name, data->wnd_class, CLASS_BUF_SZ) != 0)
 			return TRUE;
 	}
 

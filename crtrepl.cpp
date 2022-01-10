@@ -2,8 +2,39 @@
 #include "crtrepl.h"
 
 
+void* __cdecl operator new(size_t n)
+{
+	return HeapAlloc(ProcessHeap, 0, n);
+}
+
+void* __cdecl operator new[](size_t n)
+{
+	return HeapAlloc(ProcessHeap, 0, n);
+}
+
+void __cdecl operator delete(void* p)
+{
+	if (p == NULL)
+		return;
+	HeapFree(ProcessHeap, 0, p);
+}
+
+void __cdecl operator delete(void* p, size_t)
+{
+	if (p == NULL)
+		return;
+	HeapFree(ProcessHeap, 0, p);
+}
+
+void __cdecl operator delete[](void* p)
+{
+	if (p == NULL)
+		return;
+	HeapFree(ProcessHeap, 0, p);
+}
+
 // Copy a string and return its length
-size_t wcscpylen_s(WCHAR *strDestination, size_t numberOfElements, const WCHAR *strSource)
+size_t cf_wcscpylen_s(WCHAR *strDestination, size_t numberOfElements, const WCHAR *strSource)
 {
 	size_t count = 0;
 	while (((*strDestination++ = *strSource++) != 0) && (--numberOfElements > 0))
@@ -13,7 +44,7 @@ size_t wcscpylen_s(WCHAR *strDestination, size_t numberOfElements, const WCHAR *
 
 // Scan a string for the last occurrence of a character.
 // Return index of the next position or 0 if no such character.
-size_t wcsrchr_pos(const WCHAR* str, size_t start_pos, WCHAR c)
+size_t cf_wcsrchr_pos(const WCHAR* str, size_t start_pos, WCHAR c)
 {
 	size_t idx = start_pos;
 	while (idx > 0)
@@ -25,7 +56,7 @@ size_t wcsrchr_pos(const WCHAR* str, size_t start_pos, WCHAR c)
 }
 
 // [lib] Searches for the first occurrence of any of 'control' characters in a string
-size_t wcscspn(const wchar_t* string, const wchar_t* control)
+size_t cf_wcscspn(const wchar_t* string, const wchar_t* control)
 {
 	const wchar_t* str = string;
 	const wchar_t* wcset;
@@ -46,7 +77,7 @@ size_t wcscspn(const wchar_t* string, const wchar_t* control)
 }
 
 // [lib] Copies bytes between buffers
-errno_t memcpy_s(void* dest, size_t numberOfBytes, const void* src, size_t count)
+errno_t cf_memcpy_s(void* dest, size_t numberOfBytes, const void* src, size_t count)
 {
 	if (count > numberOfBytes)
 		count = numberOfBytes;
@@ -60,7 +91,7 @@ errno_t memcpy_s(void* dest, size_t numberOfBytes, const void* src, size_t count
 }
 
 // [lib] Compare the specified number of characters of two strings
-int wcsncmp(const WCHAR* string1, const WCHAR* string2, size_t count)
+int cf_wcsncmp(const WCHAR* string1, const WCHAR* string2, size_t count)
 {
 	if (!count)
 		return 0;
@@ -73,10 +104,12 @@ int wcsncmp(const WCHAR* string1, const WCHAR* string2, size_t count)
 	return (int)(*string1 - *string2);
 }
 
+#ifndef __ascii_towlower
 #define __ascii_towlower(c) ( (((c) >= L'A') && ((c) <= L'Z')) ? ((c) | 0x20) : (c) )
+#endif
 
 // [lib] Compare the specified number of characters of two strings, case ignored
-int _wcsnicmp(const WCHAR* string1, const WCHAR* string2, size_t count)
+int cf_wcsnicmp(const WCHAR* string1, const WCHAR* string2, size_t count)
 {
 	if (!count)
 		return 0;
@@ -95,16 +128,16 @@ int _wcsnicmp(const WCHAR* string1, const WCHAR* string2, size_t count)
 
 // Concatenates the two strings and one argument (limited swprintf replacement)
 template <>
-int swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, WCHAR* arg1, const WCHAR* str2)
+int cf_swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, WCHAR* arg1, const WCHAR* str2)
 {
-	size_t len = wcscpylen_s(buffer, sizeOfBuffer, str1);
-	len += wcscpylen_s(buffer + len, sizeOfBuffer - len, arg1);
-	len += wcscpylen_s(buffer + len, sizeOfBuffer - len, str2);
+	size_t len = cf_wcscpylen_s(buffer, sizeOfBuffer, str1);
+	len += cf_wcscpylen_s(buffer + len, sizeOfBuffer - len, arg1);
+	len += cf_wcscpylen_s(buffer + len, sizeOfBuffer - len, str2);
 	return (int)len;
 }
 
 template <>
-int swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, size_t arg1, const WCHAR* str2)
+int cf_swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, size_t arg1, const WCHAR* str2)
 {
 	WCHAR val[21];  // Maximum length of 64-bit value is 20 characters
 	WCHAR* res = val + 20;
@@ -117,17 +150,17 @@ int swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, size_t arg
 			*--res = L'0' + (arg1 % 10L);
 			arg1 /= 10L;
 		} while (arg1 != 0);
- 	return swprintf_s(buffer, sizeOfBuffer, str1, res, str2);
+	return cf_swprintf_s(buffer, sizeOfBuffer, str1, res, str2);
 }
 
 template <>
-int swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, ULONG arg1, const WCHAR* str2)
+int cf_swprintf_s(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, ULONG arg1, const WCHAR* str2)
 {
-	return swprintf_s(buffer, sizeOfBuffer, str1, (size_t)arg1, str2);
+	return cf_swprintf_s(buffer, sizeOfBuffer, str1, (size_t)arg1, str2);
 }
 
-// Special version for swprintf_s<ULONG> with hex format instead of decimal
-int swprintf_s_hex(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, ULONG arg1, const WCHAR* str2)
+// Special version for cf_swprintf_s<ULONG> with hex format instead of decimal
+int cf_swprintf_s_hex(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, ULONG arg1, const WCHAR* str2)
 {
 	WCHAR val[17] = L"0000000000000000";    // Maximum length of 64-bit value is 16 characters
 	WCHAR* res = val + 16;
@@ -143,5 +176,5 @@ int swprintf_s_hex(WCHAR* buffer, size_t sizeOfBuffer, const WCHAR* str1, ULONG 
 		} while (arg1 != 0);
 		res = val + ((res - val) / 8) * 8;
 	}
- 	return swprintf_s(buffer, sizeOfBuffer, str1, res, str2);
+	return cf_swprintf_s(buffer, sizeOfBuffer, str1, res, str2);
 }

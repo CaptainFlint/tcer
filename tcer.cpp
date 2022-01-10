@@ -14,10 +14,10 @@ size_t DllPathLen;
 void strip_file_data(WCHAR* elem)
 {
 	const WCHAR bad_chars[] = L"<>:|*\"";
-	size_t pos = wcscspn(elem, bad_chars);
+	size_t pos = cf_wcscspn(elem, bad_chars);
 	// Full path, colon at the second position => searching for the next bad character
 	if (pos == 1)
-		pos = 2 + wcscspn(elem + 2, bad_chars);
+		pos = 2 + cf_wcscspn(elem + 2, bad_chars);
 	// Not found
 	if (elem[pos] == L'\0')
 		return;
@@ -31,13 +31,13 @@ void strip_file_data(WCHAR* elem)
 	// Full view mode
 	size_t len = wcslen(elem);
 	// Try to determine GetTextMode scheme
-	size_t delim_pos = wcscspn(elem, L"\t\x0d");
+	size_t delim_pos = cf_wcscspn(elem, L"\t\x0d");
 	if (elem[delim_pos] == L'\0')
 	{
 		// No special delimiters found => probably GetTextMode=0: columns are space-delimited (name size date time attributes)
 		for (int i = 0; i < 4; ++i)
 		{
-			len = wcsrchr_pos(elem, len - 1, L' ');
+			len = cf_wcsrchr_pos(elem, len - 1, L' ');
 			if (len == 0)
 				return;
 		}
@@ -45,7 +45,7 @@ void strip_file_data(WCHAR* elem)
 		{
 			// The Size value does not start with digit => it contains unit name delimited by space from the value,
 			// and only the unit was stripped, so now strip the value
-			len = wcsrchr_pos(elem, len - 1, L' ');
+			len = cf_wcsrchr_pos(elem, len - 1, L' ');
 			if (len == 0)
 				return;
 		}
@@ -55,12 +55,12 @@ void strip_file_data(WCHAR* elem)
 		if (elem[delim_pos] == L'\t')
 		{
 			// Check if this is GetTextMode=4 or 5
-			size_t delim_pos2 = wcscspn(elem, L"\x0d");
+			size_t delim_pos2 = cf_wcscspn(elem, L"\x0d");
 			if (elem[delim_pos2] == L'\x0d')
 			{
 				// It is (Name:\t{name}<CR>Size:\t{size}<CR>Date:\t{date+time}<CR>Attrs:\t{attributes}, or same with <CR><LF>).
 				// Move the file name (substring between the first \t and \r chars) to the beginning of the text.
-				memcpy_s(elem, len + 1, elem + delim_pos + 1, (delim_pos2 - delim_pos) * sizeof(WCHAR));
+				cf_memcpy_s(elem, len + 1, elem + delim_pos + 1, (delim_pos2 - delim_pos) * sizeof(WCHAR));
 				len = delim_pos2 - delim_pos;
 			}
 			else
@@ -94,7 +94,7 @@ BITNESS GetProcessBitness(DWORD pid)
 	BITNESS res = PROCESS_X32;
 
 	// Protection from loading DLL from current path
-	wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"kernel32.dll");
+	cf_wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"kernel32.dll");
 	HMODULE kernel32 = LoadLibrary(DllPath);
 
 	if (kernel32 == NULL)
@@ -169,7 +169,7 @@ int wWinMainCRTStartup()
 	DllPathLen = GetSystemDirectory(DllPath, MAX_PATH);
 	if (DllPathLen == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to get system directory (", GetLastError(), L")");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to get system directory (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
@@ -225,18 +225,18 @@ int wWinMainCRTStartup()
 
 	// Obtain address of NtQueryInformationProcess needed for getting PPID
 	// Protection from loading DLL from current path
-	wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"ntdll.dll");
+	cf_wcscpylen_s(DllPath + DllPathLen, MAX_PATH - DllPathLen, L"ntdll.dll");
 	HMODULE ntdll = LoadLibrary(DllPath);
 	if (ntdll == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (", GetLastError(), L")");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to load ntdll.dll (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
 	tNtQueryInformationProcess fNtQueryInformationProcess = (tNtQueryInformationProcess)GetProcAddress(ntdll, "NtQueryInformationProcess");
 	if (fNtQueryInformationProcess == NULL)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find NtQueryInformationProcess (", GetLastError(), L")");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to find NtQueryInformationProcess (", GetLastError(), L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
@@ -247,7 +247,7 @@ int wWinMainCRTStartup()
 	NTSTATUS query_res = fNtQueryInformationProcess(GetCurrentProcess(), ProcessBasicInformation, &proc_info, sizeof(proc_info), &ret_len);
 	if (!NT_SUCCESS(query_res))
 	{
-		swprintf_s_hex(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x", query_res, L")");
+		cf_swprintf_s_hex(msg_buf, BUF_SZ, L"NtQueryInformationProcess failed (0x", query_res, L")");
 		MessageBox(NULL, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
@@ -332,7 +332,7 @@ int wWinMainCRTStartup()
 #endif
 		if (!GetGUIThreadInfo(tid, &gti))
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to get TC GUI thread information (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -390,7 +390,7 @@ int wWinMainCRTStartup()
 			tc_curpath_cmdline_len = GetWindowText(tc_cmdline, tc_curpath_cmdline, BUF_SZ);
 			if (tc_curpath_cmdline_len + 1 >= BUF_SZ)
 			{
-				swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
+				cf_swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_cmdline_len, L" characters)!");
 				MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 				ExitProcess(1);
 			}
@@ -420,7 +420,7 @@ int wWinMainCRTStartup()
 		tc_panels = WindowFinder::FindWnds(tc_main_wnd, false, L"TPathPanel", 0);
 		if (tc_panels->GetLength() != 2)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Invalid number of path bars (", tc_panels->GetLength(), L"), should be 2!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -429,7 +429,7 @@ int wWinMainCRTStartup()
 		RECT tc_panel_rect, path_panel1_rect, path_panel2_rect;
 		if (GetWindowRect(tc_panel, &tc_panel_rect) == 0)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the panel placement (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -437,7 +437,7 @@ int wWinMainCRTStartup()
 			||
 			(GetWindowRect((*tc_panels)[1], &path_panel2_rect) == 0))
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to obtain the path panel placement (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -471,7 +471,7 @@ int wWinMainCRTStartup()
 		size_t tc_curpath_panel_len = GetWindowText(tc_path_panel, tc_curpath_panel, BUF_SZ);
 		if (tc_curpath_panel_len + 1 >= BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Too long path (", tc_curpath_panel_len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -571,17 +571,17 @@ int wWinMainCRTStartup()
 	}
 	if (GetModuleFileName(NULL, ini_path, BUF_SZ) == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (", GetLastError(), L")");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to find myself (", GetLastError(), L")");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
 	size_t path_len = wcslen(ini_path);
 
 	size_t idx_slash, idx_dot;
-	idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
-	idx_dot = wcsrchr_pos(ini_path, path_len, L'.');
+	idx_slash = cf_wcsrchr_pos(ini_path, path_len, L'\\');
+	idx_dot = cf_wcsrchr_pos(ini_path, path_len, L'.');
 	size_t ini_name_len = path_len - idx_slash;
-	wcscpylen_s(ini_name, BUF_SZ, ini_path + idx_slash);
+	cf_wcscpylen_s(ini_name, BUF_SZ, ini_path + idx_slash);
 	if ((idx_dot == 0) || ((idx_slash != 0) && (idx_dot < idx_slash)))
 	{
 		// Extension not found, append '.ini'
@@ -590,7 +590,7 @@ int wWinMainCRTStartup()
 			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
+		cf_wcscpylen_s(ini_name + ini_name_len, BUF_SZ - ini_name_len, L".ini");
 	}
 	else
 	{
@@ -601,7 +601,7 @@ int wWinMainCRTStartup()
 			MessageBox(tc_main_wnd, L"Too long INI file name!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
+		cf_wcscpylen_s(ini_name + idx_dot, BUF_SZ - idx_dot, L"ini");
 		ini_name_len = idx_dot + 3;
 	}
 	if (idx_slash + ini_name_len + 1 > BUF_SZ)
@@ -609,7 +609,7 @@ int wWinMainCRTStartup()
 		MessageBox(tc_main_wnd, L"Too long path to INI!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
-	wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
+	cf_wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 
 	// INI file path constructed, check the file existence
 	if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
@@ -621,11 +621,11 @@ int wWinMainCRTStartup()
 			MessageBox(tc_main_wnd, L"COMMANDER_INI variable undefined!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		idx_slash = wcsrchr_pos(ini_path, path_len, L'\\');
+		idx_slash = cf_wcsrchr_pos(ini_path, path_len, L'\\');
 		if (idx_slash == 0)
 		{
 			// File name only, replace it with INI file name
-			wcscpylen_s(ini_path, BUF_SZ, ini_name);
+			cf_wcscpylen_s(ini_path, BUF_SZ, ini_name);
 		}
 		else
 		{
@@ -635,7 +635,7 @@ int wWinMainCRTStartup()
 				MessageBox(tc_main_wnd, L"Too long path to myself!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 				ExitProcess(1);
 			}
-			wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
+			cf_wcscpylen_s(ini_path + idx_slash, BUF_SZ - idx_slash, ini_name);
 		}
 		if (GetFileAttributes(ini_path) == INVALID_FILE_ATTRIBUTES)
 		{
@@ -717,12 +717,12 @@ int wWinMainCRTStartup()
 	if ((lpCmdLine != NULL) && (lpCmdLine[0] != L'\0'))
 	{
 		offset = ((lpCmdLine[0] == L'"') ? 1 : 0);
-		len = wcscpylen_s(input_file, BUF_SZ, lpCmdLine + offset);
+		len = cf_wcscpylen_s(input_file, BUF_SZ, lpCmdLine + offset);
 		if (input_file[len - 1] == L'"')
 			input_file[len - 1] = L'\0';
 		if (len >= BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long input path (>=", len, L" characters)!");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Too long input path (>=", len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
@@ -749,14 +749,14 @@ int wWinMainCRTStartup()
 		size_t temp_dir_len = GetTempPath(BUF_SZ, temp_dir);
 		if (temp_dir_len + 4 >= BUF_SZ)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Too long TEMP path (", temp_dir_len, L" characters)!");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
 		temp_dir[temp_dir_len++] = L'_';
 		temp_dir[temp_dir_len++] = L't';
 		temp_dir[temp_dir_len++] = L'c';
-		if (_wcsnicmp(input_file, temp_dir, temp_dir_len) == 0)
+		if (cf_wcsnicmp(input_file, temp_dir, temp_dir_len) == 0)
 		{
 			if ((input_file[temp_dir_len] == L'\\')
 				||
@@ -765,7 +765,7 @@ int wWinMainCRTStartup()
 				edit_paths->Append(input_file);
 				input_file = NULL;      // Memory block now is controlled by ArrayPtr, forget about it
 				// FS-plugins do not need to wait; archives/FTP/LPT/etc. do need.
-				WaitForTerminate = (wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) != 0);
+				WaitForTerminate = (cf_wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) != 0);
 			}
 		}
 		delete[] temp_dir;
@@ -774,7 +774,7 @@ int wWinMainCRTStartup()
 	// c. Check for TemporaryPanel FS-plugin.
 	if (edit_paths->GetLength() == 0)
 	{
-		if (wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) == 0)
+		if (cf_wcsncmp(tc_curpath_cmdline, L"\\\\\\", 3) == 0)
 		{
 			edit_paths->Append(input_file);
 			input_file = NULL;
@@ -838,8 +838,8 @@ int wWinMainCRTStartup()
 				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 				ExitProcess(1);
 			}
-			wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
-			len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, (*sel_items_txt)[i]);
+			cf_wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
+			len = cf_wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, (*sel_items_txt)[i]);
 			if ((len < BUF_SZ) && ((GetFileAttributes(tmp) & FILE_ATTRIBUTE_DIRECTORY) == 0))
 			{
 				edit_paths->Append(tmp);
@@ -874,8 +874,8 @@ int wWinMainCRTStartup()
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
-		len = wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, focus_item_txt);
+		cf_wcscpylen_s(tmp, BUF_SZ, tc_curpath_cmdline);
+		len = cf_wcscpylen_s(tmp + tc_curpath_cmdline_len, BUF_SZ - tc_curpath_cmdline_len, focus_item_txt);
 		if ((len < BUF_SZ) && ((GetFileAttributes(tmp) & FILE_ATTRIBUTE_DIRECTORY) == 0))
 			edit_paths->Append(tmp);
 		else
@@ -907,7 +907,7 @@ int wWinMainCRTStartup()
 	sel_items_num = edit_paths->GetLength();
 	if ((MaxItems != 0) && (sel_items_num > MaxItems))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"", sel_items_num, L" files are to be opened!\nAre you sure you wish to continue?");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"", sel_items_num, L" files are to be opened!\nAre you sure you wish to continue?");
 		if (MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONWARNING | MB_OKCANCEL) == IDCANCEL)
 			ExitProcess(0);
 	}
@@ -928,18 +928,18 @@ int wWinMainCRTStartup()
 	}
 	// Extract the active file extension
 	path_len = wcslen(edit_path);
-	idx_slash = wcsrchr_pos(edit_path, path_len, L'\\');
-	idx_dot = wcsrchr_pos(edit_path, path_len, L'.');
+	idx_slash = cf_wcsrchr_pos(edit_path, path_len, L'\\');
+	idx_dot = cf_wcsrchr_pos(edit_path, path_len, L'.');
 	size_t file_ext_len;
 	if ((idx_dot == 0) || ((idx_slash != 0) && (idx_dot < idx_slash)))
 	{
 		// Extension not found
-		file_ext_len = wcscpylen_s(file_ext, BUF_SZ, L"<nil>");
+		file_ext_len = cf_wcscpylen_s(file_ext, BUF_SZ, L"<nil>");
 	}
 	else
 	{
 		// Extension found
-		file_ext_len = wcscpylen_s(file_ext, BUF_SZ, edit_path + idx_dot);
+		file_ext_len = cf_wcscpylen_s(file_ext, BUF_SZ, edit_path + idx_dot);
 	}
 
 	// Get section name that describes the editor to use
@@ -947,7 +947,7 @@ int wWinMainCRTStartup()
 	if (GetPrivateProfileSection(L"Extensions", all_exts, 32767, ini_path) == 0)
 	{
 		// No extensions specified, use DefaultProgram
-		wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
+		cf_wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
 	}
 	else
 	{
@@ -960,17 +960,17 @@ int wWinMainCRTStartup()
 			// Checking the list of extensions in the current line...
 			while (*pos != L'=')
 			{
-				if ((_wcsnicmp(pos, file_ext, file_ext_len) == 0) && ((pos[file_ext_len] == L',') || (pos[file_ext_len] == L'=')))
+				if ((cf_wcsnicmp(pos, file_ext, file_ext_len) == 0) && ((pos[file_ext_len] == L',') || (pos[file_ext_len] == L'=')))
 				{
 					// Found the correct extension => store the application name and exit the loop
 					found = true;
-					pos += wcscspn(pos, L"=") + 1;
-					wcscpylen_s(ini_section, BUF_SZ, L"Program_");
-					wcscpylen_s(ini_section + 8, BUF_SZ - 8, pos);
+					pos += cf_wcscspn(pos, L"=") + 1;
+					cf_wcscpylen_s(ini_section, BUF_SZ, L"Program_");
+					cf_wcscpylen_s(ini_section + 8, BUF_SZ - 8, pos);
 					break;
 				}
 				// Go to the next extension
-				pos += wcscspn(pos, L",=");
+				pos += cf_wcscspn(pos, L",=");
 				if (*pos == L',')
 					++pos;
 			}
@@ -979,14 +979,14 @@ int wWinMainCRTStartup()
 			else
 			{
 				// Go to the next line
-				pos += wcscspn(pos, L"") + 1;
+				pos += cf_wcscspn(pos, L"") + 1;
 				exts_block = pos;
 			}
 		}
 		if (!found)
 		{
 			// No editor specified, use DefaultProgram
-			wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
+			cf_wcscpylen_s(ini_section, BUF_SZ, L"DefaultProgram");
 		}
 	}
 	delete[] all_exts;
@@ -1004,14 +1004,14 @@ int wWinMainCRTStartup()
 	path_len = GetPrivateProfileString(ini_section, L"FullPath", NULL, tmp_buf + 1, BUF_SZ - 1, ini_path);
 	if (path_len == 0)
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"INI key [", ini_section, L"]::FullPath is missing!");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"INI key [", ini_section, L"]::FullPath is missing!");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
 	path_len = ExpandEnvironmentStrings(tmp_buf, editor_path, 2 * BUF_SZ);
 	if ((path_len == 0) && (path_len > 2 * BUF_SZ - 1))
 	{
-		swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'", tmp_buf, L"'");
+		cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to expand environment variables:\n'", tmp_buf, L"'");
 		MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 		ExitProcess(1);
 	}
@@ -1062,7 +1062,7 @@ int wWinMainCRTStartup()
 			MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
-		cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
+		cur_pos = cf_wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 		for (i = 0; i < edit_paths->GetLength(); ++i)
 		{
 			if (cur_pos + 4 > CMDLINE_BUF_SZ)
@@ -1075,12 +1075,12 @@ int wWinMainCRTStartup()
 					MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 					ExitProcess(1);
 				}
-				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
+				cur_pos = cf_wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 			}
 			size_t cur_pos_bak = cur_pos;
 			cmd_line[cur_pos++] = L' ';
 			cmd_line[cur_pos++] = L'"';
-			cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
+			cur_pos += cf_wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
 			if (cur_pos + 2 >= CMDLINE_BUF_SZ)
 			{
 				cur_pos = cur_pos_bak;
@@ -1092,10 +1092,10 @@ int wWinMainCRTStartup()
 					MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 					ExitProcess(1);
 				}
-				cur_pos = wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
+				cur_pos = cf_wcscpylen_s(cmd_line, CMDLINE_BUF_SZ, editor_path);
 				cmd_line[cur_pos++] = L' ';
 				cmd_line[cur_pos++] = L'"';
-				cur_pos += wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
+				cur_pos += cf_wcscpylen_s(cmd_line + cur_pos, CMDLINE_BUF_SZ - cur_pos, (*edit_paths)[i]);
 			}
 			cmd_line[cur_pos++] = L'"';
 		}
@@ -1116,10 +1116,10 @@ int wWinMainCRTStartup()
 				MessageBox(tc_main_wnd, L"Memory allocation error!", MsgBoxTitle, MB_ICONERROR | MB_OK);
 				ExitProcess(1);
 			}
-			cur_pos = wcscpylen_s(cmd_line, sdi_buf_sz, editor_path);
+			cur_pos = cf_wcscpylen_s(cmd_line, sdi_buf_sz, editor_path);
 			cmd_line[cur_pos++] = L' ';
 			cmd_line[cur_pos++] = L'"';
-			cur_pos += wcscpylen_s(cmd_line + cur_pos, sdi_buf_sz - cur_pos, (*edit_paths)[i]);
+			cur_pos += cf_wcscpylen_s(cmd_line + cur_pos, sdi_buf_sz - cur_pos, (*edit_paths)[i]);
 			cmd_line[cur_pos++] = L'"';
 			cmd_line[cur_pos++] = L'\0';
 			cmd_lines->Append(cmd_line);
@@ -1140,7 +1140,7 @@ int wWinMainCRTStartup()
 		si_ptr->cb = sizeof(STARTUPINFO);
 		if (CreateProcess(NULL, (*cmd_lines)[i], NULL, NULL, FALSE, CREATE_UNICODE_ENVIRONMENT, NULL, NULL, si_ptr, pi_ptr) == 0)
 		{
-			swprintf_s(msg_buf, BUF_SZ, L"Failed to start editor (", GetLastError(), L")");
+			cf_swprintf_s(msg_buf, BUF_SZ, L"Failed to start editor (", GetLastError(), L")");
 			MessageBox(tc_main_wnd, msg_buf, MsgBoxTitle, MB_ICONERROR | MB_OK);
 			ExitProcess(1);
 		}
