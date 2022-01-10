@@ -269,21 +269,31 @@ int wWinMainCRTStartup()
 #endif
 
 	// First, check if we are started from the Find Files dialog
-	bool parent_find_files = false;
+	bool parent_is_main_window = true;
 	tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TFindFile", proc_info.InheritedFromUniqueProcessId);
 	if (tc_main_wnd != NULL)
 	{
 		// Yes - remember this important fact
-		parent_find_files = true;
+		parent_is_main_window = false;
 	}
 	else
 	{
-		// No - find the main window of the TC instance
-		tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", proc_info.InheritedFromUniqueProcessId);
-		if (tc_main_wnd == NULL)
+		// No - try Sync Dirs
+		tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TCmpForm", proc_info.InheritedFromUniqueProcessId);
+		if (tc_main_wnd != NULL)
 		{
-			MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
-			ExitProcess(1);
+			// Yes - remember this important fact
+			parent_is_main_window = false;
+		}
+		else
+		{
+			// No - find the main window of the TC instance
+			tc_main_wnd = WindowFinder::FindWnd(NULL, false, L"TTOTAL_CMD", proc_info.InheritedFromUniqueProcessId);
+			if (tc_main_wnd == NULL)
+			{
+				MessageBox(NULL, L"Could not find parent TC window!", MsgBoxTitle, MB_ICONERROR | MB_OK);
+				ExitProcess(1);
+			}
 		}
 	}
 
@@ -300,7 +310,7 @@ int wWinMainCRTStartup()
 	size_t active_item = 0;
 
 	// Work with TC file panel - only if started from the main TC window
-	if (!parent_find_files)
+	if (parent_is_main_window)
 	{
 		// Find TC file panels
 		tc_panels = WindowFinder::FindWnds(tc_main_wnd, true, ListBoxClass[BitnessTC], 0);
@@ -718,8 +728,8 @@ int wWinMainCRTStartup()
 		}
 	}
 
-	// a. Check for Find Files being our parent
-	if (parent_find_files)
+	// a. Check for Find Files / Sync Dirs being our parent
+	if (!parent_is_main_window)
 	{
 		edit_paths->Append(input_file);
 		input_file = NULL;      // Memory block now is controlled by ArrayPtr, forget about it
